@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '../auth/AuthProvider';
-import { DecorBizLogo } from '../design/DecorBizLogo';
+import { useAuth } from '../../auth/AuthProvider';
+import { DecorBizLogo } from '../../design/DecorBizLogo';
 
 /**
  * Staff Login View (/erp/login)
