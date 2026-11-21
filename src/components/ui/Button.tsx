@@ -2,8 +2,8 @@ import React from 'react';
 import { LucideIcon } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'accent' | 'danger' | 'ghost' | 'outline' | 'dark';
-  size?: 'sm' | 'md' | 'lg' | 'icon';
+  variant?: 'primary' | 'secondary' | 'accent' | 'danger' | 'ghost' | 'outline' | 'dark' | 'link' | 'success';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'icon';
   icon?: LucideIcon;
   iconPosition?: 'left' | 'right';
   isLoading?: boolean;
@@ -32,9 +32,12 @@ export const Button: React.FC<ButtonProps> = ({
     ghost: 'bg-transparent text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0B1F33] focus:ring-[#0D5C63]/30',
     outline: 'bg-white text-[#0D5C63] border border-[#0D5C63] hover:bg-[#0D5C63]/5 focus:ring-[#0D5C63]/30',
     dark: 'bg-[#0B1F33] text-white hover:bg-[#132C46] active:bg-[#071524] focus:ring-[#0B1F33]/50 shadow-sm',
+    link: 'bg-transparent text-[#0D5C63] hover:underline p-0 h-auto',
+    success: 'bg-[#15803D] text-white hover:bg-[#166534] active:bg-[#14532D] focus:ring-[#15803D]/50',
   };
 
   const sizes = {
+    xs: 'text-[10px] px-2 py-1 gap-1 h-6',
     sm: 'text-xs px-2.5 py-1.5 gap-1.5 h-8',
     md: 'text-sm px-3.5 py-2 gap-2 h-9',
     lg: 'text-base px-5 py-2.5 gap-2.5 h-11',

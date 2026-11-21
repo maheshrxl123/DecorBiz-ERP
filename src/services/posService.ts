@@ -22,6 +22,7 @@ import {
   PharmacyBatch,
   Product,
   Customer,
+  TileGrade,
 } from '../types';
 import {
   validatePharmacyBatch,
@@ -233,7 +234,7 @@ export const posService = {
               toneCode: earliestBatch?.toneCode || '',
               caliberCode: earliestBatch?.caliberCode || '',
               finish: p.finish || (p as any).tileDetails?.finish || '',
-              grade: p.grade || earliestBatch?.grade || 'Standard',
+              grade: (p.grade || earliestBatch?.grade || 'Standard') as TileGrade,
               dimensionsMm: (p as any).tileDetails?.dimensionsMm,
               coveragePerBoxSqFt: p.packaging?.coveragePerBoxSqFt,
               piecesPerBox: p.packaging?.piecesPerBox,

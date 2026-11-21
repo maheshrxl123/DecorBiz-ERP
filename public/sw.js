@@ -36,7 +36,9 @@ self.addEventListener('fetch', (event) => {
   // Allow network-first with offline fallback for navigation requests
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match('/index.html') as Promise<Response>)
+      fetch(event.request).catch(() =>
+        caches.match('/index.html').then((cached) => cached || new Response('Offline', { status: 503 }))
+      )
     );
     return;
   }

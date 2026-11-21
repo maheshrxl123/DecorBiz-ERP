@@ -7,6 +7,8 @@ interface PageHeaderProps {
   subtitle?: string;
   breadcrumbs?: BreadcrumbItem[];
   badge?: React.ReactNode;
+  badgeVariant?: string;
+  actions?: React.ReactNode;
   primaryAction?: React.ReactNode;
   secondaryActions?: React.ReactNode;
   filters?: React.ReactNode;

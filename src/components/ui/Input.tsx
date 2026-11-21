@@ -45,7 +45,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   label?: string;
   error?: string;
   hint?: string;
-  icon?: React.ReactNode;
+  icon?: React.ReactNode | React.ElementType;
 }
 
 export const Input: React.FC<InputProps> = ({ label, error, hint, icon, required, className = '', ...props }) => {
@@ -57,7 +57,7 @@ export const Input: React.FC<InputProps> = ({ label, error, hint, icon, required
 };
 
 interface TextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  icon?: React.ReactNode;
+  icon?: React.ReactNode | React.ElementType;
   iconPosition?: 'left' | 'right';
   hasError?: boolean;
 }
@@ -93,7 +93,7 @@ export const TextInput: React.FC<TextInputProps> = ({
   ...props
 }) => {
   const safeProps = cleanInputProps(props);
-  const renderIcon = (iconNode: React.ReactNode) => {
+  const renderIcon = (iconNode: React.ReactNode | React.ElementType) => {
     if (!iconNode) return null;
     if (React.isValidElement(iconNode)) return iconNode;
     if (typeof iconNode === 'function' || typeof iconNode === 'object') {

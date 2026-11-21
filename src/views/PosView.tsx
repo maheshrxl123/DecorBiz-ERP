@@ -968,7 +968,7 @@ export const PosView: React.FC = () => {
                         {prod.name}
                       </h4>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                        {prod.brand} {prod.dimensionsMm ? `• ${prod.dimensionsMm.length}×${prod.dimensionsMm.width}mm` : ''}
+                        {prod.brand} {prod.dimensionsMm ? `• ${prod.dimensionsMm}` : ''}
                       </p>
                     </div>
 

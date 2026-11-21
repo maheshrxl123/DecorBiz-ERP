@@ -1,43 +1,22 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer, type Firestore } from 'firebase/firestore';
-import appletConfig from '../../../firebase-applet-config.json';
 
 /**
  * Firebase Client Configuration
  * Sourced securely from Vite environment variables (VITE_FIREBASE_*)
- * with fallback to provisioned firebase-applet-config.json
+ * PRD Section 2.4
  */
-const resolvedAppletConfig = (appletConfig as any)?.default || appletConfig || {};
-
 export const firebaseConfig = {
-  apiKey:
-    (import.meta.env && import.meta.env.VITE_FIREBASE_API_KEY) ||
-    resolvedAppletConfig.apiKey ||
-    '',
-  authDomain:
-    (import.meta.env && import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) ||
-    resolvedAppletConfig.authDomain ||
-    '',
-  projectId:
-    (import.meta.env && import.meta.env.VITE_FIREBASE_PROJECT_ID) ||
-    resolvedAppletConfig.projectId ||
-    '',
-  storageBucket:
-    (import.meta.env && import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) ||
-    resolvedAppletConfig.storageBucket ||
-    '',
-  messagingSenderId:
-    (import.meta.env && import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) ||
-    resolvedAppletConfig.messagingSenderId ||
-    '',
-  appId:
-    (import.meta.env && import.meta.env.VITE_FIREBASE_APP_ID) ||
-    resolvedAppletConfig.appId ||
-    '',
+  apiKey: (import.meta.env && import.meta.env.VITE_FIREBASE_API_KEY) || '',
+  authDomain: (import.meta.env && import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || '',
+  projectId: (import.meta.env && import.meta.env.VITE_FIREBASE_PROJECT_ID) || '',
+  storageBucket: (import.meta.env && import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) || '',
+  messagingSenderId: (import.meta.env && import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || '',
+  appId: (import.meta.env && import.meta.env.VITE_FIREBASE_APP_ID) || '',
 };
 
-export const firestoreDatabaseId = resolvedAppletConfig.firestoreDatabaseId || '(default)';
+export const firestoreDatabaseId = '(default)';
 
 let appInstance: FirebaseApp | null = null;
 let authInstance: Auth | null = null;

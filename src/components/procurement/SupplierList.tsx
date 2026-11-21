@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Supplier, SupplierLedgerEntry } from '../../types/firestore';
+import { Supplier, SupplierLedgerEntry, SupplierStatus } from '../../types/firestore';
 import { supplierService } from '../../services/supplierService';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useToast } from '../../context/ToastContext';
@@ -76,7 +76,7 @@ export const SupplierList: React.FC = () => {
     try {
       const data = await supplierService.getSuppliers(
         organization.id,
-        statusFilter !== 'all' ? statusFilter : undefined
+        statusFilter !== 'all' ? statusFilter as SupplierStatus : undefined
       );
       setSuppliers(data);
     } catch (err: any) {
@@ -114,6 +114,9 @@ export const SupplierList: React.FC = () => {
       displayName: supplier.displayName || '',
       code: supplier.code || '',
       gstin: supplier.gstin || '',
+      drugLicenseNumber: supplier.drugLicenseNumber || '',
+      drugLicense20B: supplier.drugLicense20B || '',
+      drugLicense21B: supplier.drugLicense21B || '',
       contactPerson: supplier.contactPerson || '',
       email: supplier.email || '',
       phone: supplier.phone,
@@ -633,7 +636,11 @@ export const SupplierList: React.FC = () => {
                       <tr key={entry.id} className="hover:bg-[#F8FAFC]">
                         <td className="p-2.5 font-mono text-[11px]">
                           {new Date(
-                            (entry.createdAt as any)?.seconds * 1000 || entry.createdAt
+                            typeof entry.createdAt === 'number'
+                              ? entry.createdAt
+                              : ((entry.createdAt as any)?.seconds
+                                  ? (entry.createdAt as any).seconds * 1000
+                                  : Date.now())
                           ).toLocaleDateString()}
                         </td>
                         <td className="p-2.5 capitalize font-semibold">{entry.type}</td>

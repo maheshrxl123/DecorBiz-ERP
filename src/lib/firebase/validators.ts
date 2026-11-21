@@ -681,6 +681,11 @@ export function validateCustomerPayment(data: unknown, expectedOrgId?: string): 
 export function validateSalesReturn(data: unknown, expectedOrgId?: string): data is SalesReturn {
   if (!data || typeof data !== 'object') return false;
   const d = data as Record<string, unknown>;
+  const total = typeof d.grandTotal === 'number'
+    ? d.grandTotal
+    : typeof d.grandTotalRefund === 'number'
+      ? d.grandTotalRefund
+      : -1;
   const isValid =
     isNonEmptyString(d.id) &&
     isNonEmptyString(d.organizationId) &&
@@ -690,7 +695,7 @@ export function validateSalesReturn(data: unknown, expectedOrgId?: string): data
     isNonEmptyString(d.originalInvoiceNumber) &&
     Array.isArray(d.items) &&
     d.items.length > 0 &&
-    typeof d.grandTotal === 'number' && d.grandTotal >= 0 &&
+    total >= 0 &&
     isNonEmptyString(d.createdByUid) &&
     (d.status === 'draft' ||
       d.status === 'submitted' ||
@@ -699,6 +704,7 @@ export function validateSalesReturn(data: unknown, expectedOrgId?: string): data
       d.status === 'refunded' ||
       d.status === 'completed' ||
       d.status === 'rejected' ||
+      d.status === 'pending_approval' ||
       d.status === 'cancelled');
 
   if (!isValid) return false;
@@ -712,15 +718,21 @@ export function validateSalesReturn(data: unknown, expectedOrgId?: string): data
 export function validateCreditNote(data: unknown, expectedOrgId?: string): data is CreditNote {
   if (!data || typeof data !== 'object') return false;
   const d = data as Record<string, unknown>;
+  const returnId = d.returnId ?? d.salesReturnId;
+  const totalAmount = typeof d.totalCreditAmount === 'number'
+    ? d.totalCreditAmount
+    : typeof d.amount === 'number'
+      ? d.amount
+      : -1;
   const isValid =
     isNonEmptyString(d.id) &&
     isNonEmptyString(d.organizationId) &&
     isNonEmptyString(d.storeId) &&
     isNonEmptyString(d.creditNoteNumber) &&
-    isNonEmptyString(d.returnId) &&
+    isNonEmptyString(returnId) &&
     isNonEmptyString(d.originalInvoiceId) &&
-    Array.isArray(d.items) &&
-    typeof d.totalCreditAmount === 'number' && d.totalCreditAmount >= 0 &&
+    (Array.isArray(d.items) || isNonEmptyString(d.salesReturnId)) &&
+    totalAmount >= 0 &&
     isNonEmptyString(d.createdByUid) &&
     (d.status === 'issued' || d.status === 'applied' || d.status === 'refunded' || d.status === 'cancelled');
 

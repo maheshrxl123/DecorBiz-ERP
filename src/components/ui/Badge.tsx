@@ -4,11 +4,12 @@ import { CheckCircle2, AlertTriangle, AlertCircle, Clock, XCircle, FileText, Ref
 
 interface BadgeProps {
   status?: StatusVariant;
-  variant?: 'solid' | 'subtle' | 'outline';
+  variant?: 'solid' | 'subtle' | 'outline' | StatusVariant;
   label?: string;
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
   showIcon?: boolean;
   className?: string;
+  children?: React.ReactNode;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
@@ -18,6 +19,7 @@ export const Badge: React.FC<BadgeProps> = ({
   size = 'md',
   showIcon = true,
   className = '',
+  children,
 }) => {
   const statusConfig: Record<
     StatusVariant,
@@ -37,13 +39,33 @@ export const Badge: React.FC<BadgeProps> = ({
     draft: { label: 'Draft', bg: 'bg-[#F1F5F9]', text: 'text-[#475569]', border: 'border-[#CBD5E1]', icon: FileText },
     cancelled: { label: 'Cancelled', bg: 'bg-[#F1F5F9]', text: 'text-[#64748B]', border: 'border-[#CBD5E1]', icon: XCircle },
     returned: { label: 'Returned', bg: 'bg-[#E0E7FF]', text: 'text-[#4338CA]', border: 'border-[#A5B4FC]', icon: RefreshCw },
+    archived: { label: 'Archived', bg: 'bg-[#F1F5F9]', text: 'text-[#64748B]', border: 'border-[#CBD5E1]', icon: FileText },
+    warning: { label: 'Warning', bg: 'bg-[#FEF3C7]', text: 'text-[#B45309]', border: 'border-[#FCD34D]', icon: AlertTriangle },
+    success: { label: 'Success', bg: 'bg-[#DCFCE7]', text: 'text-[#15803D]', border: 'border-[#86EFAC]', icon: CheckCircle2 },
+    critical: { label: 'Critical', bg: 'bg-[#FEE2E2]', text: 'text-[#B91C1C]', border: 'border-[#FCA5A5]', icon: AlertCircle },
+    neutral: { label: 'Neutral', bg: 'bg-[#F1F5F9]', text: 'text-[#64748B]', border: 'border-[#CBD5E1]', icon: Clock },
+    damaged: { label: 'Damaged', bg: 'bg-[#FEE2E2]', text: 'text-[#B91C1C]', border: 'border-[#FCA5A5]', icon: AlertCircle },
+    secondary: { label: 'Secondary', bg: 'bg-[#F1F5F9]', text: 'text-[#64748B]', border: 'border-[#CBD5E1]', icon: Clock },
+    danger: { label: 'Danger', bg: 'bg-[#FEE2E2]', text: 'text-[#B91C1C]', border: 'border-[#FCA5A5]', icon: AlertCircle },
+    recalled: { label: 'Recalled', bg: 'bg-[#FEE2E2]', text: 'text-[#B91C1C]', border: 'border-[#FCA5A5]', icon: AlertCircle },
+    quarantined: { label: 'Quarantined', bg: 'bg-[#FEF3C7]', text: 'text-[#B45309]', border: 'border-[#FCD34D]', icon: AlertTriangle },
+    depleted: { label: 'Depleted', bg: 'bg-[#F1F5F9]', text: 'text-[#64748B]', border: 'border-[#CBD5E1]', icon: XCircle },
+    reserved: { label: 'Reserved', bg: 'bg-[#FEF3C7]', text: 'text-[#B45309]', border: 'border-[#FCD34D]', icon: Clock },
   };
 
-  const current = statusConfig[status] || statusConfig.active;
-  const displayLabel = label || current.label;
+  const statusAlias =
+    variant && Object.prototype.hasOwnProperty.call(statusConfig, variant)
+      ? (variant as StatusVariant)
+      : status;
+  const current = statusConfig[statusAlias] || statusConfig.active;
+  const displayLabel = label || children || current.label;
   const IconComponent = current.icon;
 
-  const sizeClasses = size === 'sm' ? 'text-[11px] px-2 py-0.5 gap-1' : 'text-xs px-2.5 py-1 gap-1.5';
+  const sizeClasses = size === 'xs'
+    ? 'text-[10px] px-1.5 py-0.5 gap-0.5'
+    : size === 'sm'
+      ? 'text-[11px] px-2 py-0.5 gap-1'
+      : 'text-xs px-2.5 py-1 gap-1.5';
 
   return (
     <span

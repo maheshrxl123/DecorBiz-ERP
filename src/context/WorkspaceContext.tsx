@@ -54,6 +54,7 @@ export interface CreateWorkspaceParams {
   state?: string;
   postalCode?: string;
   country?: string;
+  drugLicenseNumber?: string;
 }
 
 interface WorkspaceContextType {

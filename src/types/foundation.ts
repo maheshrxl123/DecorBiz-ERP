@@ -164,6 +164,7 @@ export interface MediaAsset {
   filePath?: string;
   thumbnailUrl?: string;
   fileName?: string;
+  originalName?: string;
   fileSize?: number;
   mimeType?: string;
   uploadedByUid?: string;

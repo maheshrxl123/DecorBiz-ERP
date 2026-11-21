@@ -14,7 +14,7 @@ interface InvoicePrintModalProps {
   isQuotation?: boolean;
 }
 
-type PrintFormat = 'thermal58' | 'thermal80' | 'a4' | 'a5';
+type PrintFormat = 'thermal58' | 'thermal80' | 'a4' | 'a5' | 'godownChallan';
 
 export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   isOpen,

@@ -8,12 +8,12 @@ export interface CustomerAddress {
   phone: string;
   houseNo: string;
   street: string;
-  locality: string;
+  locality?: string;
   landmark?: string;
   city: string;
   state: string;
   postalCode: string;
-  addressType: 'home' | 'work' | 'other';
+  addressType: 'home' | 'work' | 'other' | 'warehouse';
   isDefault: boolean;
   createdAt: Timestamp | FieldValue;
   updatedAt: Timestamp | FieldValue;

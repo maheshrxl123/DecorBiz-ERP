@@ -27,6 +27,8 @@ export interface ProductLot {
   purchasePrice: number;            // Purchase Price per Box/Unit
   mrp: number;                      // MRP per Box/Unit
   salePrice: number;                // Sale Price per Box/Unit
+  unitPurchaseCost?: number;
+  gstRate?: number;                // Sale Price per Box/Unit
   salePricePerSqFt?: number;        // Sale Price per Sq. Ft
   
   quantity: number;                 // Stock in Boxes/Units

@@ -151,7 +151,7 @@ export const notificationService = {
       },
       (err) => {
         console.error(`Error subscribing to notifications for org ${orgId}:`, err);
-        if (onError) onError(err);
+        if (onError) onError(new Error(err.message || 'Failed to load notifications'));
       }
     );
   },

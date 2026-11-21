@@ -17,8 +17,12 @@ export interface OfflineBill {
 
 const OFFLINE_QUEUE_KEY = 'decorbiz_offline_bills';
 const DEVICE_ID_KEY = 'decorbiz_device_id';
+let memoryQueue: OfflineBill[] = [];
 
 export function getDeviceId(): string {
+  if (typeof localStorage === 'undefined') {
+    return 'DEV-SERVER';
+  }
   let id = localStorage.getItem(DEVICE_ID_KEY);
   if (!id) {
     id = 'DEV-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
@@ -28,6 +32,9 @@ export function getDeviceId(): string {
 }
 
 export function getOfflineBillsQueue(): OfflineBill[] {
+  if (typeof localStorage === 'undefined') {
+    return [...memoryQueue];
+  }
   try {
     const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -51,7 +58,11 @@ export function saveOfflineBill(billData: any): OfflineBill {
   };
 
   queue.push(offlineEntry);
-  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  } else {
+    memoryQueue = [...queue];
+  }
   return offlineEntry;
 }
 
@@ -63,11 +74,19 @@ export function updateOfflineBillStatus(tempId: string, status: 'synced' | 'conf
     }
     return item;
   });
-  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(updated));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(updated));
+  } else {
+    memoryQueue = [...updated];
+  }
 }
 
 export function removeOfflineBill(tempId: string) {
   const queue = getOfflineBillsQueue();
   const filtered = queue.filter((item) => item.tempId !== tempId);
-  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(filtered));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(filtered));
+  } else {
+    memoryQueue = [...filtered];
+  }
 }

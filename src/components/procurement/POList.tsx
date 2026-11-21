@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PurchaseOrder, Supplier, PharmacyProduct } from '../../types/firestore';
+import { PurchaseOrder, POStatus, Supplier, PharmacyProduct } from '../../types/firestore';
 import { purchaseService } from '../../services/purchaseService';
 import { supplierService } from '../../services/supplierService';
 import { getProducts } from '../../services/productService';
@@ -49,6 +49,8 @@ export const POList: React.FC = () => {
       taxRate: number;
       taxAmount: number;
       totalAmount: number;
+      gstRate: number;
+      taxableAmount: number;
     }>
   >([]);
 
@@ -81,7 +83,7 @@ export const POList: React.FC = () => {
       const data = await purchaseService.getPurchaseOrders(
         organization.id,
         selectedStoreId,
-        statusFilter !== 'all' ? statusFilter : undefined
+        statusFilter !== 'all' ? statusFilter as POStatus : undefined
       );
       setPurchaseOrders(data);
     } catch (err: any) {
@@ -139,6 +141,8 @@ export const POList: React.FC = () => {
         taxRate,
         taxAmount,
         totalAmount,
+        gstRate: taxRate,
+        taxableAmount: itemQty * itemUnitCost,
       },
     ]);
 

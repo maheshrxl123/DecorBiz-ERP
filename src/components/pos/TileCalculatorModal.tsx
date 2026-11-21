@@ -9,7 +9,10 @@ interface TileCalculatorModalProps {
   defaultCoveragePerBox?: number;
   defaultPricePerBox?: number;
   defaultPricePerSqFt?: number;
-  onApply: (boxes: number, totalSqFt: number, notes?: string) => void;
+  onApply?: (boxes: number, totalSqFt: number, notes?: string) => void;
+  onApplyCalculation?: (result: { boxesNeeded: number; totalSqFtNeeded: number; wastagePercent: number }) => void;
+  initialCoverageSqFt?: number;
+  initialPiecesPerBox?: number;
 }
 
 export const TileCalculatorModal: React.FC<TileCalculatorModalProps> = ({

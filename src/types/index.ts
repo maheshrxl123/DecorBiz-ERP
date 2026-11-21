@@ -4,6 +4,13 @@ export * from './transfer';
 export * from './replenishment';
 export * from './ecommerce';
 export * from './foundation';
+export * from './firestore';
+export * from './collections';
+export * from './analytics';
+export * from './accounting';
+export * from './warehouse';
+export * from './gst';
+import type { ReactNode } from 'react';
 
 export type NavModuleId =
   | 'dashboard'
@@ -32,7 +39,8 @@ export type NavModuleId =
   | 'settings'
   | 'storefront'
   | 'delivery'
-  | 'projects';
+  | 'projects'
+  | 'compliance';
 
 export interface NavItem {
   id: NavModuleId;
@@ -57,7 +65,22 @@ export type StatusVariant =
   | 'completed'
   | 'draft'
   | 'cancelled'
-  | 'returned';
+  | 'returned'
+  | 'near_expiry'
+  | 'expired'
+  | 'archived'
+  | 'warning'
+  | 'success'
+  | 'critical'
+  | 'neutral'
+  | 'damaged'
+  | 'secondary'
+  | 'danger'
+  | 'recalled'
+  | 'quarantined'
+  | 'depleted'
+  | 'reserved';
+  // Additional operational statuses used by inventory screens
 
 export interface KpiCardProps {
   id?: string;
@@ -70,7 +93,7 @@ export interface KpiCardProps {
     isPositive: boolean;
     comparisonText: string;
   };
-  icon?: string;
+  icon?: ReactNode;
   statusVariant?: 'default' | 'success' | 'warning' | 'critical' | 'info';
   isLoading?: boolean;
   isEmpty?: boolean;
@@ -78,6 +101,7 @@ export interface KpiCardProps {
   actionLabel?: string;
   onAction?: () => void;
   subValue?: string;
+  subtitle?: string;
 }
 
 export interface BreadcrumbItem {
@@ -93,6 +117,7 @@ export interface StoreContext {
   location: string;
   gstin: string;
   status: 'online' | 'offline' | 'syncing';
+  dlNumber?: string;
 }
 
 export interface UserProfile {
@@ -102,4 +127,117 @@ export interface UserProfile {
   role: 'owner' | 'manager' | 'cashier' | 'storekeeper' | 'accountant' | 'viewer' | 'website_manager' | 'delivery_staff' | string;
   phone?: string;
   photoURL?: string;
+}
+
+export type PharmacyProduct = import('./product').Product;
+export type InventoryItem = import('./product').Product;
+export interface PosProductItem {
+  id: string;
+  name: string;
+  brand: string;
+  composition?: string;
+  sku: string;
+  batchId: string;
+  batch: string;
+  expiry: string;
+  stock: number;
+  unit: string;
+  mrp: number;
+  price: number;
+  gst: number;
+  hsnCode: string;
+  hasBatches: boolean;
+  gstPercent?: number;
+  dosageForm?: string;
+  schedule?: string;
+  shadeNumber?: string;
+  toneCode?: string;
+  caliberCode?: string;
+  finish?: string;
+  grade?: string;
+  dimensionsMm?: string;
+  coveragePerBoxSqFt?: number;
+  piecesPerBox?: number;
+  weightPerBoxKg?: number;
+  totalStoreStock?: number;
+  [key: string]: unknown;
+}
+export interface PosCartItem {
+  id: string;
+  productId: string;
+  productName?: string;
+  name?: string;
+  brand?: string;
+  composition?: string;
+  sku?: string;
+  batchId?: string;
+  batch?: string;
+  batchNumber?: string;
+  shadeNumber?: string;
+  toneCode?: string;
+  caliberCode?: string;
+  finish?: string;
+  dimensionsMm?: string;
+  coverageSqFt?: number;
+  coveragePerBoxSqFt?: number;
+  sqFtCalculated?: number;
+  gstPercent?: number;
+  gst?: number;
+  dosageForm?: string;
+  schedule?: string;
+  isPrescriptionRequired?: boolean;
+  grade?: string;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
+  piecesPerBox?: number;
+  weightPerBoxKg?: number;
+  totalTax?: number;
+  expiry?: string;
+  expiryDate?: string;
+  qty?: number;
+  quantity?: number;
+  availableStock?: number;
+  unit?: string;
+  mrp?: number;
+  price?: number;
+  salePrice?: number;
+  unitPrice?: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  gstRate?: number;
+  hsnCode?: string;
+  taxableAmount?: number;
+  total?: number;
+}
+export interface PosBillSummary {
+  subtotal: number;
+  discount?: number;
+  discountAmount?: number;
+  taxableAmount: number;
+  taxAmount?: number;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  freightAmount?: number;
+  loadingUnloadingAmount?: number;
+  roundOff?: number;
+  grandTotal: number;
+  totalSavings?: number;
+  totalItems?: number;
+  totalQty?: number;
+}
+export interface ArchitectPartner {
+  id: string;
+  name?: string;
+  phone?: string;
+  commissionPercent?: number;
+  defaultCommissionPercent?: number;
+  firmName?: string;
+  role?: string;
+  email?: string;
+  totalBusinessDriven?: number;
+  totalCommissionAccrued?: number;
+  totalCommissionPaid?: number;
+  pendingBalance?: number;
+  [key: string]: unknown;
 }

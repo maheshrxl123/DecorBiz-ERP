@@ -2,12 +2,13 @@ import React from 'react';
 
 export * from '../loading/Skeletons';
 
-export const TableSkeleton: React.FC<{ rows?: number; cols?: number }> = ({ rows = 6, cols = 7 }) => {
+export const TableSkeleton: React.FC<{ rows?: number; cols?: number; columns?: number }> = ({ rows = 6, cols, columns }) => {
+  const columnCount = columns ?? cols ?? 7;
   return (
     <div className="w-full bg-white rounded-xl border border-[#E2E8F0] overflow-hidden animate-pulse">
       {/* Table Header */}
       <div className="flex items-center gap-4 px-6 py-3.5 bg-[#F8FAFC] border-b border-[#E2E8F0]">
-        {Array.from({ length: cols }).map((_, i) => (
+        {Array.from({ length: columnCount }).map((_, i) => (
           <div key={i} className="h-3.5 bg-[#CBD5E1] rounded flex-1" />
         ))}
       </div>

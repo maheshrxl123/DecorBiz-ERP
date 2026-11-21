@@ -204,6 +204,29 @@ export interface Product {
   id: string;
   organizationId: string;
   sku: string;                     // e.g., "TIL-600X1200-001", "SAN-WASHBASIN-002"
+  name?: string;
+  stock?: number;
+  totalStoreStock?: number;
+  composition?: string;
+  hasBatches?: boolean;
+  batchId?: string;
+  batch?: string;
+  expiry?: string;
+  unit?: string;
+  mrp?: number;
+  price?: number;
+  sellingPrice?: number;
+  gst?: number;
+  gstPercent?: number;
+  dosageForm?: string;
+  schedule?: string;
+  dimensionsMm?: string;
+  shadeNumber?: string;
+  toneCode?: string;
+  caliberCode?: string;
+  category?: string;
+  packSize?: string;
+  unitPurchasePrice?: number;
   barcode?: string;                // EAN-13, UPC, Code-128
   productName: string;             // Commercial name
   normalizedProductName: string;   // Normalized string for duplicate checking
@@ -324,6 +347,7 @@ export interface ProductImportRow {
   categoryType?: CategoryType;
   productType?: string;
   dimensions?: string;
+  composition?: string;
   finish?: string;
   manufacturer: string;
   category: string;

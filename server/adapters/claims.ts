@@ -1,20 +1,21 @@
-import * as admin from 'firebase-admin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { ClaimsAdapter } from '../interfaces';
 
 export class FirebaseClaimsAdapter implements ClaimsAdapter {
   private isInitialized = false;
 
   constructor() {
-    if (!admin.apps.length) {
+    if (!getApps().length) {
       try {
         if (process.env.FIREBASE_SERVICE_ACCOUNT) {
           const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-          admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
+          initializeApp({
+            credential: cert(serviceAccount),
           });
           this.isInitialized = true;
         } else {
-          admin.initializeApp();
+          initializeApp();
           this.isInitialized = true;
         }
       } catch (err) {
@@ -30,14 +31,14 @@ export class FirebaseClaimsAdapter implements ClaimsAdapter {
       console.warn(`[ClaimsAdapter] Mock setting claim role "${role}" on user ${uid}`);
       return;
     }
-    await admin.auth().setCustomUserClaims(uid, { role, staff: true });
+    await getAuth().setCustomUserClaims(uid, { role, staff: true });
   }
 
   async verifyIdToken(idToken: string): Promise<{ uid: string; email?: string; role?: string } | null> {
     if (!idToken) return null;
     if (this.isInitialized) {
       try {
-        const decoded = await admin.auth().verifyIdToken(idToken);
+        const decoded = await getAuth().verifyIdToken(idToken);
         return {
           uid: decoded.uid,
           email: decoded.email,

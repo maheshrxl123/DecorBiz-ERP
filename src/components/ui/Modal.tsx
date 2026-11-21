@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { IconX } from '@tabler/icons-react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -9,6 +9,7 @@ interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  width?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   id?: string;
 }
 
@@ -20,6 +21,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   footer,
   size = 'md',
+  width,
   id,
 }) => {
   useEffect(() => {
@@ -45,6 +47,7 @@ export const Modal: React.FC<ModalProps> = ({
     xl: 'max-w-5xl',
     full: 'max-w-[95vw] h-[90vh]',
   };
+  const resolvedSize = width || size;
 
   return (
     <div
@@ -53,7 +56,7 @@ export const Modal: React.FC<ModalProps> = ({
       onClick={onClose}
     >
       <div
-        className={`w-full bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] overflow-hidden flex flex-col max-h-[90vh] ${sizeClasses[size]} animate-in zoom-in-95 duration-150`}
+        className={`w-full bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] overflow-hidden flex flex-col max-h-[90vh] ${sizeClasses[resolvedSize]} animate-in zoom-in-95 duration-150`}
         onClick={(e) => e.stopPropagation()}
       >
         {(title || subtitle) && (
@@ -66,7 +69,7 @@ export const Modal: React.FC<ModalProps> = ({
               onClick={onClose}
               className="p-1.5 text-[#64748B] hover:text-[#0B1F33] hover:bg-[#E2E8F0] rounded-lg transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <IconX className="w-5 h-5" />
             </button>
           </div>
         )}
@@ -145,7 +148,7 @@ export const Drawer: React.FC<DrawerProps> = ({
             onClick={onClose}
             className="p-1.5 text-[#64748B] hover:text-[#0B1F33] hover:bg-[#E2E8F0] rounded-lg transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <IconX className="w-5 h-5" />
           </button>
         </div>
 
@@ -190,7 +193,7 @@ export const BottomSheet: React.FC<ModalProps> = ({
               {subtitle && <p className="text-xs text-[#64748B]">{subtitle}</p>}
             </div>
             <button onClick={onClose} className="p-1 text-[#64748B]">
-              <X className="w-5 h-5" />
+              <IconX className="w-5 h-5" />
             </button>
           </div>
         )}

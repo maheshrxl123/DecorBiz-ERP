@@ -27,7 +27,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
   const [email, setEmail] = useState('');
   const [creditEnabled, setCreditEnabled] = useState(true);
   const [creditLimit, setCreditLimit] = useState(5000);
-  const [status, setStatus] = useState<'active' | 'inactive' | 'suspended'>('active');
+  const [status, setStatus] = useState<'active' | 'inactive' | 'blocked' | 'suspended'>('active');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
 

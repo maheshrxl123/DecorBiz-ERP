@@ -10,6 +10,7 @@ import {
   runTransaction,
   serverTimestamp,
   Timestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase/config';
 import {
@@ -603,6 +604,20 @@ export const returnsService = {
       returnRecord: createdReturnRecord,
       creditNote: createdCreditNoteRecord,
     };
+  },
+
+  async approveSalesReturn(
+    organizationId: string,
+    caller: { uid: string; email?: string | null; displayName?: string | null },
+    returnId: string
+  ): Promise<void> {
+    const ref = doc(getReturnsRef(organizationId), returnId);
+    await updateDoc(ref, {
+      status: 'approved',
+      approvedByUid: caller.uid,
+      approvedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
   },
 
   /**

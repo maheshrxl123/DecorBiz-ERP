@@ -45,6 +45,8 @@ export interface OrganizationSettings {
   taxInclusivePricing?: boolean;
   autoReorderTriggers?: boolean;
   creditDaysDefault?: number;
+  fefoStrictEnforcement?: boolean;
+  scheduleHAutoRegister?: boolean;
 }
 
 export interface Organization {
@@ -95,6 +97,7 @@ export interface StoreBranch {
   phone?: string;
   email?: string;
   gstin?: string;
+  drugLicenseNumber?: string;
   isMainBranch: boolean;
   status: 'active' | 'inactive';
   createdAt: Timestamp;
@@ -103,6 +106,7 @@ export interface StoreBranch {
 
 export type ShowroomStore = StoreBranch;
 export type PharmacyStore = StoreBranch; // Backward compatibility alias
+export type PharmacyProduct = import('./product').Product;
 
 export type StoreBranchCreatePayload = Omit<StoreBranch, 'createdAt' | 'updatedAt'> & {
   createdAt: FieldValue;
@@ -303,6 +307,7 @@ export type StockTransferPermission =
   | 'stock_transfer.manage';
 
 export type Permission =
+  | 'reports.read'
   | ProductPermission
   | MasterDataPermission
   | InventoryPermission
@@ -731,12 +736,15 @@ export interface AuditLog {
   organizationId: string;
   storeId: string | null;
   actorUid: string;
-  actorEmail: string | null;
-  actorDisplayName: string | null;
-  action: AuditAction;
-  entityType: AuditEntityType;
+  actorEmail?: string | null;
+  actorDisplayName?: string | null;
+  action: AuditAction | string;
+  entityType: AuditEntityType | string;
   entityId: string;
   metadata: Record<string, unknown>;
+  resourceType?: string;
+  resourceId?: string;
+  details?: Record<string, unknown>;
   timestamp: Timestamp;
 }
 
@@ -874,6 +882,12 @@ export interface SaleInvoiceItem {
   igstAmount?: number;
   totalTaxAmount: number;
   total: number;
+  batch?: string;
+  expiry?: string;
+  qty?: number;
+  salePrice?: number;
+  dosageForm?: string;
+  caliberCode?: string;
 }
 
 export type PaymentMode = 'cash' | 'upi' | 'card' | 'credit';
@@ -942,6 +956,9 @@ export interface Supplier {
   phone: string;
   email?: string;
   gstin?: string;
+  drugLicenseNumber?: string;
+  drugLicense20B?: string;
+  drugLicense21B?: string;
   panNumber?: string;
   address?: SupplierAddress;
   paymentTerms?: string; // NET_30, NET_15, IMMEDIATE, etc.
@@ -1008,6 +1025,7 @@ export interface PurchaseOrderItem {
   taxableAmount: number;
   taxAmount: number;
   totalAmount: number;
+  taxRate?: number;
 }
 
 export type POItem = PurchaseOrderItem;
@@ -1110,6 +1128,7 @@ export interface GRN {
   totalTax: number;
   roundOff: number;
   grandTotal: number;
+  totalTaxAmount?: number;
   remarks?: string;
   status: GRNStatus;
   receivedByUid: string;
@@ -1135,12 +1154,13 @@ export type GRNUpdatePayload = Partial<
  * 15. Customer Master Model (/organizations/{organizationId}/customers/{customerId})
  * ============================================================================
  */
-export type CustomerStatus = 'active' | 'inactive' | 'blocked';
+export type CustomerStatus = 'active' | 'inactive' | 'blocked' | 'suspended';
 
 export interface Customer {
   id: string;
   organizationId: string;
   name: string;
+  customerCode?: string;
   phone: string;
   alternatePhone?: string;
   email?: string;
@@ -1259,6 +1279,7 @@ export type SalesReturnStatus =
   | 'refunded'
   | 'completed'
   | 'rejected'
+  | 'pending_approval'
   | 'cancelled';
 
 export interface SalesReturnItem {
@@ -1307,6 +1328,9 @@ export interface SalesReturn {
   totalTax: number;
   roundOff: number;
   grandTotal: number;
+  grandTotalRefund?: number;
+  totalQuantityReturned?: number;
+  refundMode?: 'khata_credit' | 'cash' | 'upi' | 'card' | 'bank_transfer' | 'none';
   reason: string;
   creditNoteId?: string;
   refundMethod: 'khata_credit' | 'cash' | 'upi' | 'card' | 'bank_transfer' | 'none';
@@ -1370,6 +1394,9 @@ export interface CreditNote {
   totalTax: number;
   roundOff: number;
   totalCreditAmount: number;
+  salesReturnNumber?: string;
+  amount?: number;
+  balanceRemaining?: number;
   refundMethod: string;
   status: CreditNoteStatus;
   createdByUid: string;
