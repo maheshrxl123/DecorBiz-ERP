@@ -37,6 +37,7 @@ import { StoreSelectorModal } from './components/common/StoreSelectorModal';
 import { UserProfileModal } from './components/common/UserProfileModal';
 import { CommandPaletteHelpModal } from './components/common/CommandPaletteHelpModal';
 import { AuthLoadingScreen } from './components/auth/AuthLoadingScreen';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Drawer } from './components/ui/Modal';
 import { NavModuleId, StoreContext, UserProfile } from './types';
 import { APP_CONFIG } from '../config/app.config';
@@ -45,6 +46,7 @@ import { APP_CONFIG } from '../config/app.config';
 import { BusinessCard } from './storefront/BusinessCard';
 import { Storefront404 } from './storefront/Storefront404';
 import { StaffLoginView } from './views/auth/StaffLoginView';
+import { WorkspaceSetupView } from './views/auth/WorkspaceSetupView';
 import { CustomerAuthView } from './storefront/CustomerAuthView';
 
 function AuthenticatedAppShell() {
@@ -283,8 +285,20 @@ function RouterApp() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // 1. Root Storefront / Business Card (PRD Section 2.2 & W0)
+  const searchParams = new URLSearchParams(window.location.search);
+  const hasInviteParams = Boolean(
+    searchParams.get('invite')?.trim() && searchParams.get('org')?.trim()
+  );
+
+  // 1. Root Storefront / Business Card (PRD Section 2.2 & W0) or Staff Invitation Acceptance
   if (currentPath === '/' || currentPath === '') {
+    if (hasInviteParams) {
+      return (
+        <ProtectedRoute>
+          <AuthenticatedAppShell />
+        </ProtectedRoute>
+      );
+    }
     return <BusinessCard />;
   }
 
@@ -293,7 +307,19 @@ function RouterApp() {
     return <CustomerAuthView />;
   }
 
-  // 3. Staff Login (/erp/login)
+  // 3. First-Time Workspace Setup (/create-workspace or /erp/setup)
+  if (currentPath === '/create-workspace' || currentPath === '/erp/setup') {
+    if (status === 'loading') {
+      return <AuthLoadingScreen message="Preparing DecorBiz workspace setup..." />;
+    }
+    return (
+      <WorkspaceProvider>
+        <WorkspaceSetupView />
+      </WorkspaceProvider>
+    );
+  }
+
+  // 4. Staff Login (/erp/login)
   if (currentPath === '/erp/login') {
     if (isAuthenticated) {
       window.location.href = '/erp';
@@ -307,14 +333,14 @@ function RouterApp() {
     if (status === 'loading') {
       return <AuthLoadingScreen message="Loading DecorBiz showroom..." />;
     }
-    // PRD Section 2.2: Unauthenticated visit to /erp sees Storefront 404!
-    if (!isAuthenticated || status === 'unauthenticated') {
+    // PRD Section 2.2: Unauthenticated visit to /erp sees Storefront 404 (unless accepting an invitation)
+    if ((!isAuthenticated || status === 'unauthenticated') && !hasInviteParams) {
       return <Storefront404 />;
     }
     return (
-      <WorkspaceProvider>
+      <ProtectedRoute>
         <AuthenticatedAppShell />
-      </WorkspaceProvider>
+      </ProtectedRoute>
     );
   }
 

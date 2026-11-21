@@ -12,11 +12,11 @@ interface ProtectedRouteProps {
   children: ReactNode;
 }
 
-const WorkspaceGate: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const WorkspaceGate: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { workspaceState, hasWorkspace } = useWorkspace();
 
   if (workspaceState === 'checking') {
-    return <AuthLoadingScreen message="Resolving workspace permissions..." />;
+    return <AuthLoadingScreen message="Checking showroom workspace..." />;
   }
 
   // Handle invitation query parameters

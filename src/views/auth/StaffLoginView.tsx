@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2, Building2, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
 import { DecorBizLogo } from '../../design/DecorBizLogo';
 
@@ -181,6 +181,27 @@ export const StaffLoginView: React.FC = () => {
                 </button>
               )}
             </form>
+          )}
+
+          {!isForgotPassword && !resetSent && (
+            <div className="mt-6 pt-5 border-t border-[#E7E5E4] text-center">
+              <p className="text-xs text-[#57534E] mb-2.5">
+                Setting up DecorBiz for the first time with no showroom workspace yet?
+              </p>
+              <a
+                href="/create-workspace"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.history.pushState({}, '', '/create-workspace');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="w-full py-2.5 px-4 rounded-xl border border-[#1F4D3A] text-[#1F4D3A] hover:bg-[#1F4D3A]/5 text-xs font-semibold inline-flex items-center justify-center gap-2 transition-colors"
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Create Workspace</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </a>
+            </div>
           )}
         </div>
       </div>

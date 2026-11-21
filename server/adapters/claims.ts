@@ -2,14 +2,38 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { ClaimsAdapter } from '../interfaces';
 
+function parseServiceAccountEnv(rawValue?: string): Record<string, any> | null {
+  if (!rawValue) return null;
+  let trimmed = rawValue.trim();
+  if (
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+      (trimmed.startsWith('"') && trimmed.endsWith('"')))
+  ) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+  if (!trimmed || !trimmed.startsWith('{')) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === 'object' && (parsed.project_id || parsed.client_email)) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export class FirebaseClaimsAdapter implements ClaimsAdapter {
   private isInitialized = false;
 
   constructor() {
     if (!getApps().length) {
       try {
-        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-          const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        const serviceAccount = parseServiceAccountEnv(process.env.FIREBASE_SERVICE_ACCOUNT);
+        if (serviceAccount) {
           initializeApp({
             credential: cert(serviceAccount),
           });
