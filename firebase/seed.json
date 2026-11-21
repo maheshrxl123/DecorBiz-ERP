@@ -1,0 +1,44 @@
+{
+  "business": {
+    "profile": {
+      "legalName": "Decor Studio Private Limited",
+      "tradeName": "Decor Studio",
+      "city": "Indore",
+      "state": "Madhya Pradesh",
+      "stateCode": "23",
+      "address": "Palasia Showroom, Indore, Madhya Pradesh",
+      "pincode": "452001",
+      "phone": "+91 98765 43210",
+      "email": "contact@decorstudio.in",
+      "gstin": "23AAAAA0000A1Z5",
+      "gstScheme": "Regular",
+      "currency": "INR",
+      "financialYearStart": "01-04",
+      "createdAt": "2026-11-21T00:00:00.000Z"
+    }
+  },
+  "productLines": [
+    { "id": "tiles", "nameEn": "Tiles & Slabs", "nameHi": "टाइल्स और स्लैब", "defaultUnit": "box" },
+    { "id": "sanitary", "nameEn": "Sanitaryware", "nameHi": "सैनिटरीवेयर", "defaultUnit": "piece" },
+    { "id": "faucets", "nameEn": "Faucets & CP", "nameHi": "नल और सीपी फिटिंग", "defaultUnit": "piece" },
+    { "id": "adhesive", "nameEn": "Tiles Adhesive", "nameHi": "टाइल एडहेसिव", "defaultUnit": "pack" },
+    { "id": "general", "nameEn": "Other/General", "nameHi": "अन्य", "defaultUnit": "piece" }
+  ],
+  "categories": [
+    { "id": "cat_floor_tiles", "lineId": "tiles", "name": "Floor Tiles", "nameHi": "फ्लोर टाइल्स" },
+    { "id": "cat_wall_tiles", "lineId": "tiles", "name": "Wall Tiles", "nameHi": "वॉल टाइल्स" },
+    { "id": "cat_wc", "lineId": "sanitary", "name": "Water Closets (WC)", "nameHi": "वॉटर क्लोसेट" },
+    { "id": "cat_basins", "lineId": "sanitary", "name": "Wash Basins", "nameHi": "वॉश बेसिन" },
+    { "id": "cat_taps", "lineId": "faucets", "name": "Basin Mixers & Taps", "nameHi": "नल व मिक्सर" },
+    { "id": "cat_showers", "lineId": "faucets", "name": "Showers & Diverters", "nameHi": "शॉवर और डायवर्टर" },
+    { "id": "cat_adhesives", "lineId": "adhesive", "name": "Tile Adhesive", "nameHi": "टाइल एडहेसिव" },
+    { "id": "cat_epoxy_grout", "lineId": "adhesive", "name": "Epoxy Grout", "nameHi": "इपॉक्सी ग्राउट" },
+    { "id": "cat_plumbing", "lineId": "general", "name": "Plumbing", "nameHi": "प्लंबिंग" },
+    { "id": "cat_electrical", "lineId": "general", "name": "Electrical", "nameHi": "इलेक्ट्रिकल" },
+    { "id": "cat_paint", "lineId": "general", "name": "Paint", "nameHi": "पेंट" },
+    { "id": "cat_tools", "lineId": "general", "name": "Tools", "nameHi": "टूल्स" },
+    { "id": "cat_fasteners", "lineId": "general", "name": "Fasteners", "nameHi": "फास्टनर" },
+    { "id": "cat_cement_steel", "lineId": "general", "name": "Cement and steel", "nameHi": "सीमेंट और स्टील" },
+    { "id": "cat_general", "lineId": "general", "name": "General Hardware", "nameHi": "सामान्य हार्डवेयर" }
+  ]
+}

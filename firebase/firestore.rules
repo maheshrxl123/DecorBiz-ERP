@@ -1,0 +1,251 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function getStaffData() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (
+        (request.auth.token != null && request.auth.token.role in [
+          'owner', 'manager', 'cashier', 'storekeeper', 'accountant', 'viewer', 'website_manager', 'delivery_staff'
+        ]) ||
+        exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+      );
+    }
+
+    function currentRole() {
+      return request.auth.token != null && request.auth.token.role != null ?
+        request.auth.token.role :
+        (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) ? getStaffData().role : 'none');
+    }
+
+    function isOwner() {
+      return isStaff() && currentRole() == 'owner';
+    }
+
+    function isManagerOrOwner() {
+      return isStaff() && (currentRole() == 'owner' || currentRole() == 'manager');
+    }
+
+    function canBill() {
+      return isStaff() && (
+        currentRole() == 'owner' ||
+        currentRole() == 'manager' ||
+        currentRole() == 'cashier' ||
+        currentRole() == 'accountant'
+      );
+    }
+
+    function canManageStock() {
+      return isStaff() && (
+        currentRole() == 'owner' ||
+        currentRole() == 'manager' ||
+        currentRole() == 'storekeeper'
+      );
+    }
+
+    function canViewFinancials() {
+      return isStaff() && (
+        currentRole() == 'owner' ||
+        currentRole() == 'manager' ||
+        currentRole() == 'accountant'
+      );
+    }
+
+    function isWebsiteManager() {
+      return isStaff() && (
+        currentRole() == 'owner' ||
+        currentRole() == 'manager' ||
+        currentRole() == 'website_manager'
+      );
+    }
+
+    function isDeliveryStaff() {
+      return isStaff() && currentRole() == 'delivery_staff';
+    }
+
+    match /business/{docId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isStaff();
+      allow write: if isOwner();
+    }
+
+    match /staff/{uid} {
+      allow read: if isStaff();
+      allow write: if isOwner();
+    }
+
+    match /customers/{uid} {
+      allow read: if isStaff() || (isAuthenticated() && request.auth.uid == uid);
+      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow update: if (isAuthenticated() && request.auth.uid == uid) || isManagerOrOwner();
+      allow delete: if isOwner();
+    }
+
+    match /parties/{partyId} {
+      allow read: if isStaff();
+      allow create, update: if canBill();
+      allow delete: if isOwner();
+    }
+
+    match /productLines/{lineId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isManagerOrOwner();
+    }
+
+    match /brands/{brandId} {
+      allow read: if true;
+      allow write: if isManagerOrOwner();
+    }
+
+    match /series/{seriesId} {
+      allow read: if true;
+      allow write: if isManagerOrOwner();
+    }
+
+    match /products/{productId} {
+      allow read: if isStaff() || (resource.data.publish == true);
+      allow create, update: if canManageStock();
+      allow delete: if isOwner();
+    }
+
+    match /variants/{variantId} {
+      allow read: if isStaff() || (get(/databases/$(database)/documents/products/$(resource.data.productId)).data.publish == true);
+      allow create, update: if canManageStock();
+      allow delete: if isOwner();
+    }
+
+    match /balances/{balanceId} {
+      allow read: if isStaff();
+      allow write: if (canManageStock() || canBill()) &&
+        request.resource.data.onHand >= 0 &&
+        request.resource.data.reserved >= 0;
+    }
+
+    match /stockMoves/{moveId} {
+      allow read: if isStaff();
+      allow create: if canManageStock() || canBill();
+      allow update, delete: if false;
+    }
+
+    match /bills/{billId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if canBill();
+      allow update: if isManagerOrOwner() || canBill();
+      allow delete: if isOwner();
+    }
+
+    match /quotations/{quoteId} {
+      allow read: if isStaff();
+      allow create, update: if canBill();
+      allow delete: if isManagerOrOwner();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if canBill();
+      allow update, delete: if isManagerOrOwner();
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if canViewFinancials() || isStaff();
+      allow create, update: if canManageStock() || canViewFinancials();
+      allow delete: if isOwner();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if canViewFinancials();
+      allow create: if canBill();
+      allow update, delete: if isManagerOrOwner();
+    }
+
+    match /breakage/{id} {
+      allow read: if isStaff();
+      allow create, update: if canManageStock();
+      allow delete: if isOwner();
+    }
+
+    match /warranties/{id} {
+      allow read: if isStaff();
+      allow write: if canBill();
+    }
+
+    match /webOrders/{orderId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.customerId == request.auth.uid;
+      allow update: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow delete: if isOwner();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'approved' || isStaff();
+      allow create: if isAuthenticated();
+      allow update: if isWebsiteManager();
+      allow delete: if isManagerOrOwner();
+    }
+
+    match /content/{docId} {
+      allow read: if true;
+      allow write: if isWebsiteManager();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isWebsiteManager();
+    }
+
+    match /enquiries/{enquiryId} {
+      allow read: if isStaff();
+      allow create: if true;
+      allow update: if isWebsiteManager();
+      allow delete: if isOwner();
+    }
+
+    match /slots/{slotId} {
+      allow read: if true;
+      allow write: if isWebsiteManager();
+    }
+
+    match /deliveries/{deliveryId} {
+      allow read: if isStaff() && (
+        !isDeliveryStaff() || resource.data.deliveryStaffId == request.auth.uid
+      );
+      allow create: if isManagerOrOwner();
+      allow update: if isManagerOrOwner() || (
+        isDeliveryStaff() && resource.data.deliveryStaffId == request.auth.uid
+      );
+      allow delete: if isOwner();
+    }
+
+    match /counters/{counterName} {
+      allow read: if canBill();
+      allow write: if canBill();
+    }
+
+    match /audit/{auditId} {
+      allow read: if isOwner();
+      allow create: if isStaff();
+      allow update, delete: if false;
+    }
+
+    match /files/{fileId} {
+      allow read: if resource.data.isPublic == true || isStaff();
+      allow write: if isStaff();
+    }
+  }
+}

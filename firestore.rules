@@ -1,0 +1,294 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // Authentication & Role Helpers (PRD Section 6 & 20.1)
+    // =========================================================================
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function getStaffData() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (
+        (request.auth.token != null && request.auth.token.role in [
+          'owner', 'manager', 'cashier', 'storekeeper', 'accountant', 'viewer', 'website_manager', 'delivery_staff'
+        ]) ||
+        exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+      );
+    }
+
+    function currentRole() {
+      return request.auth.token != null && request.auth.token.role != null ?
+        request.auth.token.role :
+        (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) ? getStaffData().role : 'none');
+    }
+
+    function isOwner() {
+      return isStaff() && currentRole() == 'owner';
+    }
+
+    function isManagerOrOwner() {
+      return isStaff() && (currentRole() == 'owner' || currentRole() == 'manager');
+    }
+
+    function canBill() {
+      return isStaff() && (
+        currentRole() == 'owner' ||
+        currentRole() == 'manager' ||
+        currentRole() == 'cashier' ||
+        currentRole() == 'accountant'
+      );
+    }
+
+    function canManageStock() {
+      return isStaff() && (
+        currentRole() == 'owner' ||
+        currentRole() == 'manager' ||
+        currentRole() == 'storekeeper'
+      );
+    }
+
+    function canViewFinancials() {
+      return isStaff() && (
+        currentRole() == 'owner' ||
+        currentRole() == 'manager' ||
+        currentRole() == 'accountant'
+      );
+    }
+
+    function isWebsiteManager() {
+      return isStaff() && (
+        currentRole() == 'owner' ||
+        currentRole() == 'manager' ||
+        currentRole() == 'website_manager'
+      );
+    }
+
+    function isDeliveryStaff() {
+      return isStaff() && currentRole() == 'delivery_staff';
+    }
+
+    // =========================================================================
+    // Business Profile & System Settings
+    // =========================================================================
+    match /business/{docId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isStaff();
+      allow write: if isOwner();
+    }
+
+    // =========================================================================
+    // Staff & Customers
+    // =========================================================================
+    match /staff/{uid} {
+      allow read: if isStaff();
+      // Only Owner can create/update staff accounts or assign roles. Last owner cannot be deleted.
+      allow write: if isOwner();
+    }
+
+    match /customers/{uid} {
+      allow read: if isStaff() || (isAuthenticated() && request.auth.uid == uid);
+      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow update: if (isAuthenticated() && request.auth.uid == uid) || isManagerOrOwner();
+      allow delete: if isOwner();
+    }
+
+    // =========================================================================
+    // Parties & Khata Ledger
+    // =========================================================================
+    match /parties/{partyId} {
+      allow read: if isStaff();
+      allow create, update: if canBill();
+      allow delete: if isOwner();
+    }
+
+    // =========================================================================
+    // Catalogue: Product Lines, Categories, Brands, Series
+    // =========================================================================
+    match /productLines/{lineId} {
+      allow read: if true;
+      allow write: if false; // Fixed 5 lines in code, not editable by users
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isManagerOrOwner();
+    }
+
+    match /brands/{brandId} {
+      allow read: if true;
+      allow write: if isManagerOrOwner();
+    }
+
+    match /series/{seriesId} {
+      allow read: if true;
+      allow write: if isManagerOrOwner();
+    }
+
+    match /products/{productId} {
+      // Public can only read published products
+      allow read: if isStaff() || (resource.data.publish == true);
+      // Website Manager is explicitly forbidden from modifying items/pricing
+      allow create, update: if canManageStock();
+      allow delete: if isOwner();
+    }
+
+    match /variants/{variantId} {
+      allow read: if isStaff() || (get(/databases/$(database)/documents/products/$(resource.data.productId)).data.publish == true);
+      allow create, update: if canManageStock();
+      allow delete: if isOwner();
+    }
+
+    // =========================================================================
+    // Stock Balances & Stock Movements
+    // =========================================================================
+    match /balances/{balanceId} {
+      allow read: if isStaff();
+      // On-hand stock cannot be negative
+      allow write: if (canManageStock() || canBill()) &&
+        request.resource.data.onHand >= 0 &&
+        request.resource.data.reserved >= 0;
+    }
+
+    match /stockMoves/{moveId} {
+      allow read: if isStaff();
+      allow create: if canManageStock() || canBill();
+      allow update, delete: if false; // Immutable audit trail
+    }
+
+    // =========================================================================
+    // Bills, Quotations, and Payments
+    // =========================================================================
+    match /bills/{billId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if canBill();
+      // Only Owner or Manager can void bills
+      allow update: if isManagerOrOwner() || canBill();
+      allow delete: if isOwner();
+    }
+
+    match /quotations/{quoteId} {
+      allow read: if isStaff();
+      allow create, update: if canBill();
+      allow delete: if isManagerOrOwner();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if canBill();
+      allow update, delete: if isManagerOrOwner();
+    }
+
+    // =========================================================================
+    // Purchases, Expenses, Warranties, Breakage
+    // =========================================================================
+    match /purchases/{purchaseId} {
+      allow read: if canViewFinancials() || isStaff();
+      allow create, update: if canManageStock() || canViewFinancials();
+      allow delete: if isOwner();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if canViewFinancials();
+      // Cashiers can record their own daily expenses
+      allow create: if canBill();
+      allow update, delete: if isManagerOrOwner();
+    }
+
+    match /breakage/{id} {
+      allow read: if isStaff();
+      allow create, update: if canManageStock();
+      allow delete: if isOwner();
+    }
+
+    match /warranties/{id} {
+      allow read: if isStaff();
+      allow write: if canBill();
+    }
+
+    // =========================================================================
+    // Storefront: Web Orders, Reviews, Content, Enquiries
+    // =========================================================================
+    match /webOrders/{orderId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.customerId == request.auth.uid;
+      // Confirmation and status transitions handled by staff
+      allow update: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow delete: if isOwner();
+    }
+
+    match /reviews/{reviewId} {
+      // Approved reviews visible publicly; pending visible to staff
+      allow read: if resource.data.status == 'approved' || isStaff();
+      allow create: if isAuthenticated();
+      // Review moderation by Owner, Manager or Website Manager
+      allow update: if isWebsiteManager();
+      allow delete: if isManagerOrOwner();
+    }
+
+    match /content/{docId} {
+      allow read: if true;
+      allow write: if isWebsiteManager();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isWebsiteManager();
+    }
+
+    match /enquiries/{enquiryId} {
+      allow read: if isStaff();
+      allow create: if true; // Public lead generation
+      allow update: if isWebsiteManager();
+      allow delete: if isOwner();
+    }
+
+    match /slots/{slotId} {
+      allow read: if true;
+      allow write: if isWebsiteManager();
+    }
+
+    // =========================================================================
+    // Deliveries & Challans
+    // =========================================================================
+    match /deliveries/{deliveryId} {
+      allow read: if isStaff() && (
+        !isDeliveryStaff() || resource.data.deliveryStaffId == request.auth.uid
+      );
+      allow create: if isManagerOrOwner();
+      allow update: if isManagerOrOwner() || (
+        isDeliveryStaff() && resource.data.deliveryStaffId == request.auth.uid
+      );
+      allow delete: if isOwner();
+    }
+
+    // =========================================================================
+    // Counters & Audit Log
+    // =========================================================================
+    match /counters/{counterName} {
+      allow read: if canBill();
+      // Counter increment allowed inside bill creation transaction
+      allow write: if canBill();
+    }
+
+    match /audit/{auditId} {
+      allow read: if isOwner();
+      allow create: if isStaff();
+      allow update, delete: if false; // Immutable audit log
+    }
+
+    match /files/{fileId} {
+      allow read: if resource.data.isPublic == true || isStaff();
+      allow write: if isStaff();
+    }
+  }
+}

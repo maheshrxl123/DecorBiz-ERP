@@ -1,0 +1,60 @@
+/* DecorBiz Design System Tokens
+ * Source: DecorBiz PRD v2.0 Section 5.1
+ */
+
+:root {
+  /* Brand Palette */
+  --primary: #1F4D3A;        /* Deep Forest Green: buttons, primary actions */
+  --primary-dark: #143528;   /* Darkened Green: hover, active, pressed */
+  --accent: #C4A574;         /* Warm Stone / Gold: storefront accents, highlights */
+  --bg: #F6F3EE;             /* Neutral Warm Stone: background */
+  --surface: #FFFFFF;        /* Crisp White: cards, modals, tables */
+  --text: #1C1917;           /* Deep Charcoal: main body text */
+  --text-muted: #57534E;     /* Medium Warm Gray: secondary text, labels */
+  --border: #E7E5E4;         /* Subtle Stone Gray: borders, dividers */
+
+  /* Semantic Financial Colors */
+  --receive: #15803D;        /* Green: To receive ("आपको मिलेंगे"), success */
+  --give: #B91C1C;           /* Red: To give ("आपको देने हैं"), error */
+  --warning: #A16207;        /* Amber: Low stock, warning */
+  --info: #0284C7;           /* Blue: Informational hints */
+
+  /* Typography */
+  --font-sans: 'Source Sans 3', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Sizing and Touch Targets */
+  --touch-target-min: 48px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 72px;
+  --mobile-nav-height: 64px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Theme for ERP */
+[data-theme='dark'] {
+  --bg: #1C1917;
+  --surface: #292524;
+  --text: #FAFAF9;
+  --text-muted: #A8A29E;
+  --border: #44403C;
+  --accent: #D4B98B;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Indian tabular numbers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
