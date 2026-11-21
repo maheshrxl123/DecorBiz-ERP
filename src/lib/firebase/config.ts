@@ -16,6 +16,10 @@ export const firebaseConfig = {
   appId: (import.meta.env && import.meta.env.VITE_FIREBASE_APP_ID) || '',
 };
 
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
+);
+
 export const firestoreDatabaseId = '(default)';
 
 let appInstance: FirebaseApp | null = null;
@@ -77,4 +81,6 @@ async function testConnection(retryCount = 0) {
     }
   }
 }
-testConnection();
+if (isFirebaseConfigured) {
+  testConnection();
+}

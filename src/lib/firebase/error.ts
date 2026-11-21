@@ -1,4 +1,4 @@
-import { getFirebaseAuth } from './config';
+import { getFirebaseAuth, isFirebaseConfigured } from './config';
 
 export enum OperationType {
   CREATE = 'create',
@@ -27,8 +27,7 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
-  const auth = getFirebaseAuth();
-  const currentUser = auth.currentUser;
+  const currentUser = isFirebaseConfigured ? getFirebaseAuth().currentUser : null;
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {

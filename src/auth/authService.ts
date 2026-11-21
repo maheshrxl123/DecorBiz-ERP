@@ -12,7 +12,7 @@ import {
   type User as FirebaseUser,
   type Unsubscribe,
 } from 'firebase/auth';
-import { getFirebaseAuth } from '../lib/firebase/config';
+import { getFirebaseAuth, isFirebaseConfigured } from '../lib/firebase/config';
 import { AuthUser, SignInCredentials, SignUpCredentials } from './types';
 
 /**
@@ -93,6 +93,9 @@ export const authService = {
    * Authenticate staff member using Email and Password
    */
   async signIn({ email, password, rememberMe = true }: SignInCredentials): Promise<AuthUser> {
+    if (!isFirebaseConfigured) {
+      throw new Error('Firebase is not configured. Please set VITE_FIREBASE_* environment variables.');
+    }
     const auth = getFirebaseAuth();
     
     // Configure session persistence based on rememberMe selection
@@ -119,6 +122,9 @@ export const authService = {
    * Register new owner account using Email and Password
    */
   async signUp({ email, password, displayName }: SignUpCredentials): Promise<AuthUser> {
+    if (!isFirebaseConfigured) {
+      throw new Error('Firebase is not configured. Please set VITE_FIREBASE_* environment variables.');
+    }
     const auth = getFirebaseAuth();
 
     try {
@@ -144,6 +150,7 @@ export const authService = {
    * Secure Sign Out
    */
   async signOut(): Promise<void> {
+    if (!isFirebaseConfigured) return;
     const auth = getFirebaseAuth();
     try {
       await firebaseSignOut(auth);
@@ -156,6 +163,9 @@ export const authService = {
    * Dispatch password reset link to registered email
    */
   async sendPasswordReset(email: string): Promise<void> {
+    if (!isFirebaseConfigured) {
+      throw new Error('Firebase is not configured. Please set VITE_FIREBASE_* environment variables.');
+    }
     const auth = getFirebaseAuth();
     try {
       await sendPasswordResetEmail(auth, email.trim());
@@ -173,6 +183,10 @@ export const authService = {
    * Subscribe to Firebase authentication state changes
    */
   observeAuthState(onChange: (user: AuthUser | null) => void): Unsubscribe {
+    if (!isFirebaseConfigured) {
+      onChange(null);
+      return () => {};
+    }
     const auth = getFirebaseAuth();
     return onAuthStateChanged(
       auth,
@@ -190,6 +204,7 @@ export const authService = {
    * Get current authenticated user synchronously if available
    */
   getCurrentUser(): AuthUser | null {
+    if (!isFirebaseConfigured) return null;
     const auth = getFirebaseAuth();
     return normalizeFirebaseUser(auth.currentUser);
   },
@@ -198,6 +213,9 @@ export const authService = {
    * Update profile display name and/or photo URL
    */
   async updateUserProfile(params: { displayName?: string; photoURL?: string }): Promise<AuthUser> {
+    if (!isFirebaseConfigured) {
+      throw new Error('Firebase is not configured. Please set VITE_FIREBASE_* environment variables.');
+    }
     const auth = getFirebaseAuth();
     if (!auth.currentUser) throw new Error('No authenticated user session found.');
 
@@ -215,6 +233,9 @@ export const authService = {
    * Update password for currently authenticated user
    */
   async updateUserPassword(newPassword: string): Promise<void> {
+    if (!isFirebaseConfigured) {
+      throw new Error('Firebase is not configured. Please set VITE_FIREBASE_* environment variables.');
+    }
     const auth = getFirebaseAuth();
     if (!auth.currentUser) throw new Error('No authenticated user session found.');
 
