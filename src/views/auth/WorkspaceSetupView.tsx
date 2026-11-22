@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { DecorBizLogo } from '../../design/DecorBizLogo';
 import { useAuth } from '../../auth/AuthProvider';
 import { useWorkspace } from '../../context/WorkspaceContext';
@@ -49,6 +50,8 @@ interface AccountValidationErrors {
 }
 
 export const WorkspaceSetupView: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, signUp, signIn, signOut, error: authError, clearError: clearAuthError } = useAuth();
   const {
     organization,
@@ -95,13 +98,12 @@ export const WorkspaceSetupView: React.FC = () => {
   // Redirect to /erp right after creating a workspace when on standalone setup routes
   useEffect(() => {
     if (justProvisioned && hasWorkspace && workspaceState === 'active-membership') {
-      const path = window.location.pathname;
+      const path = location.pathname;
       if (path === '/create-workspace' || path === '/erp/setup') {
-        window.history.pushState({}, '', '/erp');
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        navigate('/erp', { replace: true });
       }
     }
-  }, [justProvisioned, hasWorkspace, workspaceState]);
+  }, [justProvisioned, hasWorkspace, workspaceState, location.pathname, navigate]);
 
   const handleOrgNameChange = (val: string) => {
     setOrgName(val);
@@ -240,8 +242,7 @@ export const WorkspaceSetupView: React.FC = () => {
   const activeError = authError || workspaceError;
 
   const navigateTo = (path: string) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    navigate(path);
   };
 
   return (

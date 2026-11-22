@@ -3,6 +3,7 @@ import { Printer, X, CheckCircle2, FileText, Truck, ShieldCheck, Phone, MapPin, 
 import { SaleInvoice, Organization, PharmacyStore } from '../../types';
 import { safeToFixed, formatBatchExpiryDate, formatDateTime } from '../../lib/formatting/formatters';
 import { amountInWords } from '../../core/money';
+import { useI18n } from '../../i18n';
 
 interface InvoicePrintModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   isQuotation = false,
 }) => {
   const [format, setFormat] = useState<PrintFormat>('a4');
+  const { t } = useI18n();
 
   if (!isOpen || !invoice) return null;
 
@@ -93,7 +95,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                {isQuotation ? 'Proforma Estimate / Quotation' : 'Sale Completed & Tax Invoice'}
+                {isQuotation ? t('billing.quotation', 'Quotation') : t('billing.taxInvoice', 'Tax Invoice')}
                 <span
                   className={`font-mono text-xs px-2.5 py-0.5 rounded-full font-semibold ${
                     isQuotation
@@ -179,7 +181,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               className="px-4 py-2 bg-[#1F4D3A] hover:bg-[#143528] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-900/20 transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>{isQuotation ? 'Print Estimate' : 'Print Invoice'}</span>
+              <span>{t('actions.print', 'Print')}</span>
             </button>
 
             <button
@@ -361,7 +363,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                         isQuotation ? 'bg-amber-600 text-white' : 'bg-slate-900 text-white'
                       }`}
                     >
-                      {isQuotation ? 'Project Estimate / Quotation' : 'Tax Invoice / Cash Memo'}
+                      {isQuotation ? t('billing.quotation', 'Quotation') : t('billing.taxInvoice', 'Tax Invoice')}
                     </div>
                     <div className="text-xs">
                       <strong>Document No:</strong>{' '}
@@ -499,12 +501,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 {/* Totals Summary Card with Freight & Hamali */}
                 <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 text-xs space-y-1.5">
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Material Subtotal:</span>
+                    <span className="text-slate-600">{t('billing.subtotal', 'Subtotal')}:</span>
                     <span className="font-semibold text-slate-900">₹{safeToFixed(invoice.subtotal)}</span>
                   </div>
                   {invoice.totalDiscount > 0 && (
                     <div className="flex justify-between text-emerald-700">
-                      <span>Total Savings / Discount:</span>
+                      <span>{t('billing.discount', 'Discount')}:</span>
                       <span className="font-semibold">-₹{safeToFixed(invoice.totalDiscount)}</span>
                     </div>
                   )}
@@ -513,7 +515,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     <span className="font-semibold text-slate-900">₹{safeToFixed(invoice.taxableAmount)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">CGST + SGST (18% / 28%):</span>
+                    <span className="text-slate-600">{t('billing.cgst', 'CGST')} + {t('billing.sgst', 'SGST')}:</span>
                     <span className="font-semibold text-slate-900">₹{safeToFixed(invoice.totalTax)}</span>
                   </div>
                   {invoice.freightAmount ? (
@@ -533,7 +535,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   ) : null}
                   {invoice.roundOff !== 0 && (
                     <div className="flex justify-between text-slate-500">
-                      <span>Round Off:</span>
+                      <span>{t('billing.roundOff', 'Round Off')}:</span>
                       <span>
                         {invoice.roundOff > 0
                           ? `+₹${safeToFixed(invoice.roundOff)}`
@@ -543,12 +545,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   )}
                   <div className="border-t border-slate-300 pt-2 flex justify-between items-center">
                     <span className="text-sm font-black text-slate-950 uppercase">
-                      {isQuotation ? 'Estimated Grand Total:' : 'Grand Total:'}
+                      {t('billing.total', 'Total Amount')}:
                     </span>
                     <span className="text-base font-black text-teal-700">₹{safeToFixed(invoice.grandTotal)}</span>
                   </div>
                   <div className="mt-2 text-[10px] font-semibold text-slate-700 pt-1 border-t border-slate-200">
-                    <span className="font-bold text-slate-900">Amount in Words: </span>
+                    <span className="font-bold text-slate-900">{t('billing.amountInWords', 'Amount in words')}: </span>
                     {invoiceWords}
                   </div>
                 </div>

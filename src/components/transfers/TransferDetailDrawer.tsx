@@ -521,7 +521,7 @@ export const TransferDetailDrawer: React.FC<TransferDetailDrawerProps> = ({
                   />
                   <Input
                     label="Dispatch Notes"
-                    placeholder="e.g. Temperature controlled transit container applied..."
+                    placeholder="e.g. Palletized with corner guards and foam sheets..."
                     value={dispatchNotes}
                     onChange={(e) => setDispatchNotes(e.target.value)}
                   />

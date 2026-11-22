@@ -104,6 +104,7 @@ export interface StoreBranch {
   updatedAt: Timestamp;
 }
 
+export type ShowroomBranch = StoreBranch;
 export type ShowroomStore = StoreBranch;
 export type PharmacyStore = StoreBranch; // Backward compatibility alias
 export type PharmacyProduct = import('./product').Product;

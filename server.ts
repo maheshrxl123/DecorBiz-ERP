@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { ImageKitMediaAdapter } from './server/adapters/media';
 import { RazorpayPaymentsAdapter } from './server/adapters/payments';
 import { FirebaseClaimsAdapter, ALLOWED_STAFF_ROLES } from './server/adapters/claims';
+import { ServerGspAdapter } from './server/adapters/gsp';
 
 dotenv.config();
 
@@ -48,10 +49,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// SEO Isolation: Emit X-Robots-Tag: noindex, nofollow on all ERP & workspace setup routes (PRD Section 2.2)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/erp') || req.path.startsWith('/create-workspace')) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  }
+  next();
+});
+
 // Adapter instances
 const mediaAdapter = new ImageKitMediaAdapter();
 const paymentsAdapter = new RazorpayPaymentsAdapter();
 const claimsAdapter = new FirebaseClaimsAdapter();
+const gspAdapter = new ServerGspAdapter();
 
 async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
@@ -253,6 +263,90 @@ app.post('/api/payments/webhook', async (req: AuthenticatedRequest, res) => {
     res.json({ status: 'ok' });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Webhook processing failed' });
+  }
+});
+
+// =========================================================================
+// Server-Side GSP / IRP & E-Way Bill Endpoints (PRD Version 5)
+// =========================================================================
+app.get('/api/gsp/status', requireAuth, (_req, res) => {
+  res.json(gspAdapter.getStatus());
+});
+
+app.post('/api/gsp/test', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { gstin } = req.body || {};
+    const result = await gspAdapter.testConnection(typeof gstin === 'string' ? gstin : undefined);
+    res.status(result.configured ? 200 : 503).json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'GSP gateway connectivity test failed' });
+  }
+});
+
+app.post('/api/gsp/irn', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const caller = req.authUser!;
+    const { organizationId, ...payload } = req.body || {};
+    const isAuthorized = await claimsAdapter.isCallerOrgAdminOrOwner(caller, organizationId);
+    if (!isAuthorized && caller.role !== 'accountant' && caller.role !== 'manager') {
+      return res.status(403).json({ error: 'Forbidden: Only Owners, Admins, Managers, or Accountants can generate IRNs.' });
+    }
+    if (!gspAdapter.isConfigured()) {
+      return res.status(503).json({
+        code: 'GSP_NOT_CONFIGURED',
+        error: `GSP server gateway is not configured. Missing: ${gspAdapter.getStatus().missingFields.join(', ')}.`,
+      });
+    }
+    const result = await gspAdapter.generateIrn(payload);
+    res.json(result);
+  } catch (err: any) {
+    const isValidation = err?.message?.startsWith('Invalid') || err?.message?.includes('required');
+    res.status(isValidation ? 400 : 502).json({ error: err.message || 'IRN generation failed' });
+  }
+});
+
+app.post('/api/gsp/irn/cancel', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const caller = req.authUser!;
+    const { organizationId, supplierGstin, ...payload } = req.body || {};
+    const isAuthorized = await claimsAdapter.isCallerOrgAdminOrOwner(caller, organizationId);
+    if (!isAuthorized && caller.role !== 'accountant' && caller.role !== 'manager') {
+      return res.status(403).json({ error: 'Forbidden: Only Owners, Admins, Managers, or Accountants can cancel IRNs.' });
+    }
+    if (!gspAdapter.isConfigured()) {
+      return res.status(503).json({
+        code: 'GSP_NOT_CONFIGURED',
+        error: `GSP server gateway is not configured. Missing: ${gspAdapter.getStatus().missingFields.join(', ')}.`,
+      });
+    }
+    await gspAdapter.cancelIrn(payload, typeof supplierGstin === 'string' ? supplierGstin : undefined);
+    res.json({ success: true });
+  } catch (err: any) {
+    const isValidation = err?.message?.startsWith('Invalid') || err?.message?.includes('required');
+    res.status(isValidation ? 400 : 502).json({ error: err.message || 'IRN cancellation failed' });
+  }
+});
+
+app.post('/api/gsp/ewaybill', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const caller = req.authUser!;
+    const { organizationId, supplierGstin, ...payload } = req.body || {};
+    const isAuthorized = await claimsAdapter.isCallerOrgAdminOrOwner(caller, organizationId);
+    const allowedEwayRoles = new Set(['owner', 'admin', 'manager', 'accountant', 'billing_staff', 'sales_staff', 'warehouse_staff']);
+    if (!isAuthorized && !allowedEwayRoles.has(caller.role || '')) {
+      return res.status(403).json({ error: 'Forbidden: Authorized showroom staff required to generate E-Way Bills.' });
+    }
+    if (!gspAdapter.isConfigured()) {
+      return res.status(503).json({
+        code: 'GSP_NOT_CONFIGURED',
+        error: `GSP server gateway is not configured. Missing: ${gspAdapter.getStatus().missingFields.join(', ')}.`,
+      });
+    }
+    const result = await gspAdapter.generateEWayBill(payload, typeof supplierGstin === 'string' ? supplierGstin : undefined);
+    res.json(result);
+  } catch (err: any) {
+    const isValidation = err?.message?.startsWith('Invalid') || err?.message?.includes('required') || err?.message?.includes('distance');
+    res.status(isValidation ? 400 : 502).json({ error: err.message || 'E-Way Bill generation failed' });
   }
 });
 

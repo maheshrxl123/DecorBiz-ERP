@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2, Building2, ArrowRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  IconMail,
+  IconLock,
+  IconEye,
+  IconEyeOff,
+  IconAlertCircle,
+  IconArrowLeft,
+  IconCircleCheck,
+  IconBuilding,
+  IconArrowRight,
+} from '@tabler/icons-react';
 import { useAuth } from '../../auth/AuthProvider';
 import { DecorBizLogo } from '../../design/DecorBizLogo';
 
@@ -7,9 +18,10 @@ import { DecorBizLogo } from '../../design/DecorBizLogo';
  * Staff Login View (/erp/login)
  * PRD Section 2.2 & Implementation Plan Section 2
  * Staff only via Owner invitation (no public staff sign up).
- * Includes noindex meta tag.
+ * Includes noindex meta tag via Router SEO isolation.
  */
 export const StaffLoginView: React.FC = () => {
+  const navigate = useNavigate();
   const { signIn, sendPasswordReset, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,8 +62,7 @@ export const StaffLoginView: React.FC = () => {
     setIsSubmitting(true);
     try {
       await signIn({ email: email.trim(), password });
-      window.history.pushState({}, '', '/erp');
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      navigate('/erp', { replace: true });
     } catch (err: any) {
       setLocalError(err.message || 'Invalid email or password');
     } finally {
@@ -79,14 +90,14 @@ export const StaffLoginView: React.FC = () => {
         <div className="bg-white py-8 px-6 shadow-sm border border-[#E7E5E4] rounded-2xl sm:px-10">
           {(error || localError) && (
             <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-800">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600 mt-0.5" />
+              <IconAlertCircle className="w-4 h-4 flex-shrink-0 text-red-600 mt-0.5" />
               <span>{error || localError}</span>
             </div>
           )}
 
           {resetSent ? (
             <div className="text-center py-4 space-y-3">
-              <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+              <IconCircleCheck className="w-10 h-10 text-emerald-600 mx-auto" />
               <h3 className="text-sm font-bold text-[#1C1917]">Reset Link Dispatched</h3>
               <p className="text-xs text-stone-600">
                 A password reset email has been sent to <strong>{email}</strong>. Please check your inbox.
@@ -110,14 +121,14 @@ export const StaffLoginView: React.FC = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
-                    <Mail className="w-4 h-4" />
+                    <IconMail className="w-4 h-4" />
                   </div>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="staff@decorstudio.in"
+                    placeholder="name@company.in"
                     className="w-full pl-9 pr-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1F4D3A]/20 focus:border-[#1F4D3A]"
                   />
                 </div>
@@ -139,7 +150,7 @@ export const StaffLoginView: React.FC = () => {
                   </div>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
-                      <Lock className="w-4 h-4" />
+                      <IconLock className="w-4 h-4" />
                     </div>
                     <input
                       type={showPassword ? 'text' : 'password'}
@@ -154,7 +165,7 @@ export const StaffLoginView: React.FC = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
@@ -178,7 +189,7 @@ export const StaffLoginView: React.FC = () => {
                   onClick={() => setIsForgotPassword(false)}
                   className="w-full text-center text-xs font-semibold text-stone-500 hover:text-stone-800 pt-2 flex items-center justify-center gap-1.5"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
+                  <IconArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
                 </button>
               )}
             </form>
@@ -189,19 +200,14 @@ export const StaffLoginView: React.FC = () => {
               <p className="text-xs text-[#57534E] mb-2.5">
                 Setting up DecorBiz for the first time with no showroom workspace yet?
               </p>
-              <a
-                href="/create-workspace"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.history.pushState({}, '', '/create-workspace');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
+              <Link
+                to="/create-workspace"
                 className="w-full py-2.5 px-4 rounded-xl border border-[#1F4D3A] text-[#1F4D3A] hover:bg-[#1F4D3A]/5 text-xs font-semibold inline-flex items-center justify-center gap-2 transition-colors"
               >
-                <Building2 className="w-4 h-4" />
+                <IconBuilding className="w-4 h-4" />
                 <span>Create Workspace</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </a>
+                <IconArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           )}
         </div>

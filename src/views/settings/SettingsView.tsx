@@ -4,26 +4,25 @@ import { BranchesManagementTab } from '../../components/settings/BranchesManagem
 import { OrganizationSettingsTab } from '../../components/settings/OrganizationSettingsTab';
 import { SecurityComplianceTab } from '../../components/settings/SecurityComplianceTab';
 import { AuditLogViewerTab } from '../../components/settings/AuditLogViewerTab';
+import { ModulesSettingsTab } from '../../components/settings/ModulesSettingsTab';
 import { PageHeader } from '../../components/common/PageHeader';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useToast } from '../../context/ToastContext';
+import { useI18n } from '../../i18n';
 import {
-  Users,
-  Store,
-  Building2,
-  Shield,
-  ShieldCheck,
-  RefreshCw,
-  Sliders,
-  CheckCircle2,
-  FileText,
-  Lock,
-} from 'lucide-react';
+  IconUsers,
+  IconBuildingStore,
+  IconBuilding,
+  IconShield,
+  IconShieldCheck,
+  IconRefresh,
+  IconAdjustments,
+  IconLanguage,
+} from '@tabler/icons-react';
 
-type SettingsTab = 'staff' | 'branches' | 'organization' | 'security' | 'audit';
+type SettingsTab = 'modules' | 'staff' | 'branches' | 'organization' | 'security' | 'audit';
 
 interface TabConfig {
   id: SettingsTab;
@@ -34,9 +33,11 @@ interface TabConfig {
 }
 
 export const SettingsView: React.FC = () => {
-  const { organization, stores, allStores, currentStore, currentStaff, resolvedRole, refreshWorkspace } = useWorkspace();
+  const { organization, stores, allStores, currentStore, currentStaff, resolvedRole, isSimpleMode, refreshWorkspace } =
+    useWorkspace();
   const { success, error } = useToast();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('staff');
+  const { t, lang, setLanguage } = useI18n();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('modules');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -57,64 +58,92 @@ export const SettingsView: React.FC = () => {
 
   const tabList: TabConfig[] = [
     {
+      id: 'modules',
+      label: t('settings.tabs.modules', 'Modules & Simple Mode'),
+      subtitle: 'Enable or disable optional ERP modules per PRD Version 1–5',
+      icon: IconAdjustments,
+    },
+    {
       id: 'staff',
-      label: 'Staff & Roles',
+      label: t('settings.tabs.staff', 'Staff & Roles'),
       subtitle: 'Employee provisioning, RBAC roles, and invite links',
-      icon: Users,
+      icon: IconUsers,
     },
     {
       id: 'branches',
-      label: 'Showrooms & Branches',
+      label: t('settings.tabs.branches', 'Showrooms & Branches'),
       subtitle: 'Showrooms, godown yards, stock depots, and billing points',
-      icon: Store,
+      icon: IconBuildingStore,
       badgeCount: totalBranchesCount,
     },
     {
       id: 'organization',
-      label: 'Organization Profile',
+      label: t('settings.tabs.organization', 'Business Profile'),
       subtitle: 'Legal entity details, GSTIN, and statutory operational rules',
-      icon: Building2,
+      icon: IconBuilding,
     },
     {
       id: 'security',
-      label: 'Security & Alerts',
+      label: t('settings.tabs.security', 'Security & Alerts'),
       subtitle: 'Multi-channel notifications, session guards, and credentials',
-      icon: Shield,
+      icon: IconShield,
     },
     {
       id: 'audit',
-      label: 'Audit Ledger',
+      label: t('settings.tabs.audit', 'Audit Ledger'),
       subtitle: 'Immutable statutory compliance logs and event tracking',
-      icon: ShieldCheck,
+      icon: IconShieldCheck,
     },
   ];
-
-  const currentTabMeta = tabList.find((t) => t.id === activeTab) || tabList[0];
-  const CurrentIcon = currentTabMeta.icon;
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
-        title="Platform Settings & Configuration"
-        subtitle="Manage your showroom workspaces, godown branches, role-based staff access, and GST billing configurations"
+        title={t('settings.title', 'Settings & Configuration')}
+        subtitle={t(
+          'settings.subtitle',
+          'Manage showroom modules, staff access, branches, language, and GST compliance'
+        )}
         badge={
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0066FF] text-xs font-bold border border-blue-200">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Enterprise Control
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#1F4D3A] text-xs font-bold border border-emerald-200">
+            <IconShieldCheck className="w-3.5 h-3.5" />
+            {isSimpleMode ? t('modules.simpleModeActive', 'Simple Mode Active') : t('modules.customModeActive', 'Custom Modules Active')}
           </span>
         }
         primaryAction={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            isLoading={isRefreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Sync Config
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center rounded-xl border border-[#E7E5E4] bg-white p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
+                  lang === 'en' ? 'bg-[#1F4D3A] text-white' : 'text-[#57534E] hover:text-[#1C1917]'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('hi')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
+                  lang === 'hi' ? 'bg-[#1F4D3A] text-white' : 'text-[#57534E] hover:text-[#1C1917]'
+                }`}
+              >
+                हिन्दी
+              </button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              isLoading={isRefreshing}
+              className="flex items-center gap-2"
+            >
+              <IconRefresh className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Sync Config
+            </Button>
+          </div>
         }
       />
 
@@ -123,41 +152,32 @@ export const SettingsView: React.FC = () => {
         <KpiCard
           title="Business Entity"
           value={organization?.name || '—'}
-          subtitle={
-            organization?.gstin
-              ? `GST: ${organization.gstin}`
-              : 'GSTIN Not Configured'
-          }
-          icon={<Building2 className="w-5 h-5 text-[#0D5C63]" />}
+          subtitle={organization?.gstin ? `GST: ${organization.gstin}` : 'GSTIN Not Configured'}
+          icon={<IconBuilding className="w-5 h-5 text-[#1F4D3A]" />}
         />
         <KpiCard
           title="Showrooms & Branches"
           value={`${totalBranchesCount} Active`}
           subtitle={currentStore?.name ? `Current: ${currentStore.name}` : 'No Branch Selected'}
-          icon={<Store className="w-5 h-5 text-indigo-600" />}
+          icon={<IconBuildingStore className="w-5 h-5 text-indigo-600" />}
         />
         <KpiCard
           title="Active Operator Role"
           value={activeStaffRole}
           subtitle={`${permissionsCount} Assigned Privileges`}
-          icon={<Shield className="w-5 h-5 text-emerald-600" />}
+          icon={<IconShield className="w-5 h-5 text-emerald-600" />}
         />
         <KpiCard
-          title="Statutory Compliance"
-          value={organization?.settings?.fefoStrictEnforcement ? 'FIFO/Lot Strict' : 'Standard'}
-          subtitle={
-            organization?.gstin
-              ? `GSTIN: ${organization.gstin}`
-              : 'GST Compliant'
-          }
-          icon={<ShieldCheck className="w-5 h-5 text-amber-600" />}
+          title={t('settings.language', 'Display Language')}
+          value={lang === 'hi' ? 'हिन्दी (Hindi)' : 'English (IN)'}
+          subtitle={isSimpleMode ? 'Simple Mode (V1 Core)' : 'Extended Modules Enabled'}
+          icon={<IconLanguage className="w-5 h-5 text-amber-600" />}
         />
       </div>
 
       {/* Tab Navigation & Content Container */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
-        {/* Modern Segmented Navigation Tabs */}
-        <div className="p-2 sm:p-3 bg-[#F8FAFC] border-b border-[#E2E8F0] overflow-x-auto no-scrollbar">
+      <div className="bg-white rounded-2xl border border-[#E7E5E4] shadow-xs overflow-hidden">
+        <div className="p-2 sm:p-3 bg-[#FAF8F5] border-b border-[#E7E5E4] overflow-x-auto no-scrollbar">
           <div className="flex items-center gap-2 min-w-max">
             {tabList.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -165,19 +185,20 @@ export const SettingsView: React.FC = () => {
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all select-none cursor-pointer ${
                     isActive
-                      ? 'bg-[#0D5C63] text-white shadow-xs font-bold'
-                      : 'text-[#475569] hover:text-[#0B1F33] hover:bg-[#E2E8F0]/60'
+                      ? 'bg-[#1F4D3A] text-white shadow-xs font-bold'
+                      : 'text-[#57534E] hover:text-[#1C1917] hover:bg-[#E7E5E4]/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#64748B]'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#57534E]'}`} />
                   <span>{tab.label}</span>
                   {tab.badgeCount !== undefined && (
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-[#E2E8F0] text-[#475569]'
+                        isActive ? 'bg-white/20 text-white' : 'bg-[#E7E5E4] text-[#57534E]'
                       }`}
                     >
                       {tab.badgeCount}
@@ -191,6 +212,7 @@ export const SettingsView: React.FC = () => {
 
         {/* Tab Body */}
         <div className="p-6 sm:p-8 min-h-[540px]">
+          {activeTab === 'modules' && <ModulesSettingsTab />}
           {activeTab === 'staff' && <StaffManagementView />}
           {activeTab === 'branches' && <BranchesManagementTab />}
           {activeTab === 'organization' && <OrganizationSettingsTab />}
@@ -201,5 +223,3 @@ export const SettingsView: React.FC = () => {
     </div>
   );
 };
-
-

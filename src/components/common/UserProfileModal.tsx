@@ -312,7 +312,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             <FormField label="Full Name" required>
               <TextInput
                 type="text"
-                placeholder="e.g. Dr. Rajesh Kumar"
+                placeholder="e.g. Rajesh Kumar"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 icon={User}

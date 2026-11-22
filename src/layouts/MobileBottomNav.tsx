@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import {
-  LayoutDashboard,
-  Receipt,
-  Plus,
-  Users,
-  Menu,
-  ShoppingCart,
-  UserPlus,
-  PackagePlus,
-  ReceiptText,
-  CreditCard,
-  X,
-} from 'lucide-react';
+  IconLayoutDashboard,
+  IconReceipt,
+  IconPlus,
+  IconUsers,
+  IconMenu2,
+  IconShoppingCart,
+  IconUserPlus,
+  IconPackage,
+  IconReceiptTax,
+  IconCreditCard,
+  IconX,
+} from '@tabler/icons-react';
 import { NavModuleId } from '../types';
-import { t } from '../i18n';
+import { useI18n } from '../i18n';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 interface MobileBottomNavProps {
   activeModule: NavModuleId;
@@ -28,6 +29,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenMoreMenu,
   onQuickAction,
 }) => {
+  const { t } = useI18n();
+  const { isModuleEnabled } = useWorkspace();
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
   const handleAction = (action: 'newBill' | 'receivePayment' | 'addParty' | 'addItem' | 'addExpense' | 'newPurchase') => {
@@ -57,7 +60,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <div className={`p-1 rounded-lg ${activeModule === 'dashboard' ? 'bg-[#1F4D3A]/10 text-[#1F4D3A]' : ''}`}>
-            <LayoutDashboard className="w-5 h-5" />
+            <IconLayoutDashboard className="w-5 h-5" />
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight">{t('nav.home', 'Home')}</span>
         </button>
@@ -71,7 +74,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <div className={`p-1 rounded-lg ${activeModule === 'pos' || activeModule === 'billing' ? 'bg-[#1F4D3A]/10 text-[#1F4D3A]' : ''}`}>
-            <Receipt className="w-5 h-5" />
+            <IconReceipt className="w-5 h-5" />
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight">{t('nav.bills', 'Bills')}</span>
         </button>
@@ -82,9 +85,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             type="button"
             onClick={() => setIsQuickActionsOpen(true)}
             className="w-12 h-12 rounded-full bg-[#1F4D3A] text-white flex items-center justify-center shadow-md active:scale-95 transition-transform cursor-pointer"
-            title="Quick Actions"
+            title={t('nav.quickActions', 'Quick Actions')}
           >
-            <Plus className="w-6 h-6 stroke-[2.5]" />
+            <IconPlus className="w-6 h-6" />
           </button>
         </div>
 
@@ -97,7 +100,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <div className={`p-1 rounded-lg ${activeModule === 'customers' || activeModule === 'parties' ? 'bg-[#1F4D3A]/10 text-[#1F4D3A]' : ''}`}>
-            <Users className="w-5 h-5" />
+            <IconUsers className="w-5 h-5" />
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight">{t('nav.parties', 'Parties')}</span>
         </button>
@@ -109,13 +112,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           className="flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl text-[#57534E] cursor-pointer"
         >
           <div className="p-1 rounded-lg">
-            <Menu className="w-5 h-5" />
+            <IconMenu2 className="w-5 h-5" />
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight">{t('nav.more', 'More')}</span>
         </button>
       </nav>
 
-      {/* Quick Actions Sheet Modal (PRD Section 5.2) */}
+      {/* Quick Actions Sheet Modal (PRD Section 5.2 — respects Module Switches) */}
       {isQuickActionsOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/50 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-t-2xl p-5 shadow-2xl border-t border-[#E7E5E4] max-h-[85vh] overflow-y-auto">
@@ -126,7 +129,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 onClick={() => setIsQuickActionsOpen(false)}
                 className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
               >
-                <X className="w-5 h-5" />
+                <IconX className="w-5 h-5" />
               </button>
             </div>
 
@@ -137,7 +140,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
               >
                 <div className="p-2 rounded-lg bg-[#1F4D3A]/10 text-[#1F4D3A]">
-                  <Receipt className="w-5 h-5" />
+                  <IconReceipt className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-[#1C1917]">{t('actions.newBill', 'New Bill')}</div>
@@ -145,75 +148,85 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 </div>
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleAction('receivePayment')}
-                className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#1C1917]">{t('actions.receivePayment', 'Receive Payment')}</div>
-                  <div className="text-[11px] text-stone-500">Khata Collection</div>
-                </div>
-              </button>
+              {isModuleEnabled('payments') && (
+                <button
+                  type="button"
+                  onClick={() => handleAction('receivePayment')}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800">
+                    <IconCreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-[#1C1917]">{t('actions.receivePayment', 'Receive Payment')}</div>
+                    <div className="text-[11px] text-stone-500">Khata Collection</div>
+                  </div>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => handleAction('addParty')}
-                className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-blue-100 text-blue-800">
-                  <UserPlus className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#1C1917]">{t('actions.addParty', 'Add Party')}</div>
-                  <div className="text-[11px] text-stone-500">Customer / Supplier</div>
-                </div>
-              </button>
+              {isModuleEnabled('parties') && (
+                <button
+                  type="button"
+                  onClick={() => handleAction('addParty')}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-blue-100 text-blue-800">
+                    <IconUserPlus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-[#1C1917]">{t('actions.addParty', 'Add Party')}</div>
+                    <div className="text-[11px] text-stone-500">Customer / Supplier</div>
+                  </div>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => handleAction('addItem')}
-                className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-amber-100 text-amber-800">
-                  <PackagePlus className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#1C1917]">{t('actions.addItem', 'Add Item')}</div>
-                  <div className="text-[11px] text-stone-500">Tile / Sanitaryware</div>
-                </div>
-              </button>
+              {isModuleEnabled('inventory') && (
+                <button
+                  type="button"
+                  onClick={() => handleAction('addItem')}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-amber-100 text-amber-800">
+                    <IconPackage className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-[#1C1917]">{t('actions.addItem', 'Add Item')}</div>
+                    <div className="text-[11px] text-stone-500">Tile / Sanitaryware</div>
+                  </div>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => handleAction('addExpense')}
-                className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-rose-100 text-rose-800">
-                  <ReceiptText className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#1C1917]">{t('actions.addExpense', 'Add Expense')}</div>
-                  <div className="text-[11px] text-stone-500">Day book entry</div>
-                </div>
-              </button>
+              {isModuleEnabled('expenses') && (
+                <button
+                  type="button"
+                  onClick={() => handleAction('addExpense')}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-rose-100 text-rose-800">
+                    <IconReceiptTax className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-[#1C1917]">{t('actions.addExpense', 'Add Expense')}</div>
+                    <div className="text-[11px] text-stone-500">Day book entry</div>
+                  </div>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => handleAction('newPurchase')}
-                className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-purple-100 text-purple-800">
-                  <ShoppingCart className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#1C1917]">{t('actions.newPurchase', 'New Purchase')}</div>
-                  <div className="text-[11px] text-stone-500">Supplier GRN Inward</div>
-                </div>
-              </button>
+              {isModuleEnabled('purchases') && (
+                <button
+                  type="button"
+                  onClick={() => handleAction('newPurchase')}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-left hover:bg-stone-100 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-purple-100 text-purple-800">
+                    <IconShoppingCart className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-[#1C1917]">{t('actions.newPurchase', 'New Purchase')}</div>
+                    <div className="text-[11px] text-stone-500">Supplier GRN Inward</div>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         </div>

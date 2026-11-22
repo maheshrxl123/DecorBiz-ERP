@@ -308,7 +308,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Dr. Rajesh Sharma"
+                  placeholder="e.g. Amit Verma"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full bg-white border border-[#CBD5E1] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:border-[#0D5C63] focus:ring-1 focus:ring-[#0D5C63] outline-none"
@@ -325,7 +325,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({
                 <input
                   type="email"
                   required
-                  placeholder="rajesh.pharma@gmail.com"
+                  placeholder="staff@company.in"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white border border-[#CBD5E1] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:border-[#0D5C63] focus:ring-1 focus:ring-[#0D5C63] outline-none"
@@ -357,7 +357,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({
               </label>
               <input
                 type="text"
-                placeholder="EMP-104 / PCI-7782"
+                placeholder="EMP-104"
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3.5 py-2.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:border-[#0D5C63] focus:ring-1 focus:ring-[#0D5C63] outline-none"

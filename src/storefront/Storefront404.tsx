@@ -1,5 +1,6 @@
 import React from 'react';
-import { Home, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { IconHome } from '@tabler/icons-react';
 import { DecorBizLogo } from '../design/DecorBizLogo';
 
 /**
@@ -28,13 +29,13 @@ export const Storefront404: React.FC = () => {
         </p>
 
         <div>
-          <a
-            href="/"
+          <Link
+            to="/"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1F4D3A] text-white font-semibold text-sm hover:bg-[#143528] transition-colors shadow-sm"
           >
-            <Home className="w-4 h-4" />
+            <IconHome className="w-4 h-4" />
             Return to Homepage
-          </a>
+          </Link>
         </div>
       </main>
 

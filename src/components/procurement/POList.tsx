@@ -491,7 +491,7 @@ export const POList: React.FC = () => {
             <TextInput
               value={poNotes}
               onChange={(e) => setPoNotes(e.target.value)}
-              placeholder="e.g. Deliver before 5 PM via cold-chain transport"
+              placeholder="e.g. Deliver before 5 PM with tempo/crane unloading"
             />
           </div>
 

@@ -18,6 +18,7 @@ import {
   validatePharmacyStore,
   validateStaffMember,
 } from '../lib/firebase/validators';
+import { getActiveModules } from '../../config/modules.config';
 
 export const organizationService = {
   /**
@@ -191,6 +192,20 @@ export const organizationService = {
         phone: params.phone?.trim() || '',
         email: params.email?.trim() || params.ownerEmail,
         gstin: params.gstin?.trim() || '',
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // 6. Initialize Simple Mode module switches in canonical root `settings/modules`
+    const moduleSettingsRef = doc(db, 'settings', 'modules');
+    batch.set(
+      moduleSettingsRef,
+      {
+        organizationId: orgId,
+        modules: getActiveModules(),
+        simpleMode: true,
+        updatedBy: params.ownerUid,
         updatedAt: serverTimestamp(),
       },
       { merge: true }

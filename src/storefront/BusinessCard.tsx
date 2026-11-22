@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
-import { MapPin, Phone, Mail, ShieldCheck, LogOut, User, Store } from 'lucide-react';
+import {
+  IconMapPin,
+  IconPhone,
+  IconMail,
+  IconShieldCheck,
+  IconLogout,
+  IconUser,
+  IconBuildingStore,
+} from '@tabler/icons-react';
 import { db } from '../lib/firebase/config';
 import { DecorBizLogo } from '../design/DecorBizLogo';
 import { useAuth } from '../auth/AuthProvider';
@@ -26,6 +35,7 @@ interface PublicBusinessProfile {
 }
 
 export const BusinessCard: React.FC = () => {
+  const navigate = useNavigate();
   const { user, isAuthenticated, signOut } = useAuth();
   const [customerProfile, setCustomerProfile] = useState<CustomerAccountProfile | null>(null);
   const [business, setBusiness] = useState<PublicBusinessProfile | null>(null);
@@ -78,8 +88,7 @@ export const BusinessCard: React.FC = () => {
   }, [isAuthenticated, user?.uid]);
 
   const navigateTo = (path: string) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    navigate(path);
   };
 
   const displayName = business?.tradeName || business?.showroomName || business?.legalName || '';
@@ -98,7 +107,7 @@ export const BusinessCard: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex items-center gap-2 text-right">
                   <div className="w-7 h-7 rounded-full bg-[#1F4D3A]/10 text-[#1F4D3A] flex items-center justify-center">
-                    <User className="w-3.5 h-3.5" />
+                    <IconUser className="w-3.5 h-3.5" />
                   </div>
                   <div className="leading-tight">
                     <p className="text-xs font-semibold text-[#1C1917]">
@@ -116,21 +125,17 @@ export const BusinessCard: React.FC = () => {
                   onClick={() => signOut()}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E7E5E4] bg-white hover:bg-[#F6F3EE] text-xs font-semibold text-[#1C1917] transition-colors cursor-pointer"
                 >
-                  <LogOut className="w-3.5 h-3.5 text-[#57534E]" />
+                  <IconLogout className="w-3.5 h-3.5 text-[#57534E]" />
                   <span>Sign Out</span>
                 </button>
               </div>
             ) : (
-              <a
-                href="/account/login"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigateTo('/account/login');
-                }}
+              <Link
+                to="/account/login"
                 className="text-xs font-semibold text-[#1F4D3A] hover:underline"
               >
                 Customer Sign In
-              </a>
+              </Link>
             )}
           </div>
         </div>
@@ -147,7 +152,7 @@ export const BusinessCard: React.FC = () => {
         ) : !business || !displayName ? (
           <div className="bg-white rounded-2xl shadow-sm border border-[#E7E5E4] p-8 md:p-12 text-center space-y-4">
             <div className="w-12 h-12 rounded-xl bg-[#F6F3EE] text-[#1F4D3A] flex items-center justify-center mx-auto">
-              <Store className="w-6 h-6" />
+              <IconBuildingStore className="w-6 h-6" />
             </div>
             <h1 className="text-2xl md:text-3xl font-serif-heading font-bold text-[#1C1917]">
               Showroom Profile Not Configured Yet
@@ -202,7 +207,7 @@ export const BusinessCard: React.FC = () => {
               {fullAddress && (
                 <div className="flex items-start gap-3">
                   <div className="p-2.5 rounded-xl bg-[#F6F3EE] text-[#1F4D3A] flex-shrink-0">
-                    <MapPin className="w-5 h-5" />
+                    <IconMapPin className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider">Showroom Address</h4>
@@ -215,7 +220,7 @@ export const BusinessCard: React.FC = () => {
               {business.phone && (
                 <div className="flex items-start gap-3">
                   <div className="p-2.5 rounded-xl bg-[#F6F3EE] text-[#1F4D3A] flex-shrink-0">
-                    <Phone className="w-5 h-5" />
+                    <IconPhone className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider">Phone &amp; WhatsApp</h4>
@@ -228,7 +233,7 @@ export const BusinessCard: React.FC = () => {
               {business.email && (
                 <div className="flex items-start gap-3">
                   <div className="p-2.5 rounded-xl bg-[#F6F3EE] text-[#1F4D3A] flex-shrink-0">
-                    <Mail className="w-5 h-5" />
+                    <IconMail className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider">Email Enquiries</h4>
@@ -240,7 +245,7 @@ export const BusinessCard: React.FC = () => {
               {business.gstin && (
                 <div className="flex items-start gap-3">
                   <div className="p-2.5 rounded-xl bg-[#F6F3EE] text-[#1F4D3A] flex-shrink-0">
-                    <ShieldCheck className="w-5 h-5" />
+                    <IconShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider">GSTIN</h4>

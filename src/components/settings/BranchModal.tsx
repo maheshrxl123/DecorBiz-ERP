@@ -185,7 +185,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Branch / Store Name" required error={formErrors.name}>
             <TextInput
-              placeholder="e.g. Apex Central Dispensary"
+              placeholder="e.g. Main Tile Showroom"
               value={name}
               onChange={(e) => setName(e.target.value)}
               hasError={!!formErrors.name}
@@ -222,7 +222,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             <TextInput
               icon={<Mail className="w-4 h-4" />}
               type="email"
-              placeholder="branch@vetrify.internal"
+              placeholder="branch@company.in"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               hasError={!!formErrors.email}

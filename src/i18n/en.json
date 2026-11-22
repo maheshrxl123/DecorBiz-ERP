@@ -4,20 +4,64 @@
     "tagline": "Tiles & Sanitaryware ERP"
   },
   "nav": {
-    "home": "Home",
-    "bills": "Bills",
+    "home": "Dashboard",
+    "bills": "Billing (POS)",
     "quickActions": "Quick Actions",
-    "parties": "Parties",
+    "parties": "Parties & Khata",
+    "payments": "Payments",
     "more": "More",
-    "inventory": "Inventory",
+    "inventory": "Items & Stock",
     "quotations": "Quotations",
     "purchases": "Purchases",
+    "replenishment": "Replenishment",
     "expenses": "Expenses",
     "reports": "Reports",
+    "gstReports": "GST Reports",
+    "einvoice": "E-Invoice & E-Way",
+    "returns": "Returns & Credit Notes",
+    "warehouses": "Godowns & Yards",
+    "transfers": "Godown Transfers",
+    "tasks": "Tasks",
+    "auditCentre": "Audit Log",
     "settings": "Settings",
-    "storefront": "Website",
+    "storefront": "Online Storefront",
     "profile": "Profile",
     "logout": "Sign Out"
+  },
+  "dashboard": {
+    "title": "Showroom Overview",
+    "subtitle": "Live sales, receivables, payables, and stock health from Cloud Firestore",
+    "todaySales": "Today's Sales",
+    "youllGet": "You'll Get (Receivables)",
+    "youllGive": "You'll Give (Payables)",
+    "lowStock": "Low Stock Alerts",
+    "onlineOrders": "Website Orders Pending",
+    "newBill": "New Counter Bill",
+    "addItem": "Add Catalog Item"
+  },
+  "modules": {
+    "title": "Modules & Simple Mode",
+    "subtitle": "Control which ERP modules are active for your showroom. Simple Mode keeps only Version 1 core screens visible.",
+    "simpleModeActive": "Simple Mode Active",
+    "customModeActive": "Custom Modules Active",
+    "resetSimpleMode": "Reset to Simple Mode",
+    "saveChanges": "Save Module Settings",
+    "disabledTitle": "Module Disabled",
+    "disabledDescription": "This module is currently turned off in Simple Mode. The showroom Owner can enable it under Settings -> Modules.",
+    "openModuleSettings": "Open Module Settings"
+  },
+  "settings": {
+    "title": "Settings & Configuration",
+    "subtitle": "Manage showroom modules, staff access, branches, language, and GST compliance",
+    "tabs": {
+      "modules": "Modules & Simple Mode",
+      "staff": "Staff & Roles",
+      "branches": "Showrooms & Branches",
+      "organization": "Business Profile",
+      "security": "Security & Alerts",
+      "audit": "Audit Ledger"
+    },
+    "language": "Display Language"
   },
   "actions": {
     "newBill": "New Bill",
@@ -62,6 +106,8 @@
     "general": "Other/General"
   },
   "billing": {
+    "taxInvoice": "Tax Invoice",
+    "quotation": "Quotation",
     "subtotal": "Subtotal",
     "discount": "Discount",
     "cgst": "CGST",
@@ -81,7 +127,10 @@
     "sqft": "Sq Ft",
     "sqm": "Sq M",
     "ratePerSqft": "Rate / Sq Ft",
-    "amountInWords": "Amount in words"
+    "amountInWords": "Amount in words",
+    "settleBill": "Settle & Print Bill",
+    "holdBill": "Hold Bill",
+    "saveQuotation": "Save Quotation"
   },
   "calculator": {
     "title": "Tile Area Calculator",

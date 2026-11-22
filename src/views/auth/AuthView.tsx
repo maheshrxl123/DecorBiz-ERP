@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RxLogo } from '../../design/RxLogo';
+import { DecorBizLogo } from '../../design/DecorBizLogo';
 import { useAuth } from '../../auth/AuthProvider';
 import {
   Mail,
@@ -177,7 +177,7 @@ export const AuthView: React.FC = () => {
     >
       <div className="w-full max-w-5xl bg-white rounded-3xl border border-[#E2E8F0] shadow-2xl shadow-slate-300/40 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px]">
         
-        {/* Left Side: Vetrify Brand Showcase (Visible on lg+) */}
+        {/* Left Side: DecorBiz Brand Showcase (Visible on lg+) */}
         <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-[#0B1F33] via-[#0F2942] to-[#0D5C63] p-10 flex-col justify-between text-white relative overflow-hidden">
           {/* Subtle Ambient Background Highlights */}
           <div className="absolute -top-24 -left-24 w-72 h-72 bg-[#00E5FF]/15 rounded-full blur-3xl pointer-events-none" />
@@ -185,9 +185,9 @@ export const AuthView: React.FC = () => {
 
           {/* Top Brand Header */}
           <div className="relative z-10">
-            <RxLogo variant="light" size="lg" />
+            <DecorBizLogo variant="light" size="lg" />
             <p className="text-xs text-[#94A3B8] mt-3 font-medium leading-relaxed">
-              Billing, Inventory &amp; E-commerce Platform. Everything Connected.
+              Showroom Billing, Inventory &amp; Online Catalog. Everything Connected.
             </p>
           </div>
 
@@ -241,7 +241,7 @@ export const AuthView: React.FC = () => {
         <div className="col-span-1 lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-between bg-white">
           {/* Mobile/Tablet Brand Header */}
           <div className="flex lg:hidden items-center justify-between pb-6 border-b border-[#E2E8F0] mb-6">
-            <RxLogo variant="primary" size="md" />
+            <DecorBizLogo size="md" showTagline={false} />
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E6F4F1] text-[#0D5C63] text-[11px] font-bold">
               <ShieldCheck className="w-3.5 h-3.5 text-[#0D5C63]" />
               <span>Secure Portal</span>
@@ -285,7 +285,7 @@ export const AuthView: React.FC = () => {
             {mode === 'login' && (
               <div className="mb-6">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0B1F33] tracking-tight">
-                  Sign In to Vetrify
+                  Sign In to DecorBiz
                 </h1>
                 <p className="text-sm text-[#64748B] mt-1.5 font-medium">
                   Enter your registered credentials to access your terminal.
@@ -299,7 +299,7 @@ export const AuthView: React.FC = () => {
                   Create Business Account
                 </h1>
                 <p className="text-sm text-[#64748B] mt-1.5 font-medium">
-                  Register your owner credentials to provision your new Vetrify workspace.
+                  Register your owner credentials to provision your new DecorBiz workspace.
                 </p>
               </div>
             )}
@@ -360,7 +360,7 @@ export const AuthView: React.FC = () => {
                       id="auth-email"
                       type="email"
                       autoComplete="email"
-                      placeholder="e.g. staff@vetrify.com"
+                      placeholder="e.g. staff@company.in"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
@@ -509,7 +509,7 @@ export const AuthView: React.FC = () => {
                       id="signup-name"
                       type="text"
                       autoComplete="name"
-                      placeholder="e.g. Dr. Rajesh Sharma"
+                      placeholder="e.g. Rajesh Sharma"
                       value={displayName}
                       onChange={(e) => {
                         setDisplayName(e.target.value);
@@ -546,7 +546,7 @@ export const AuthView: React.FC = () => {
                       id="signup-email"
                       type="email"
                       autoComplete="email"
-                      placeholder="e.g. owner@vetrify.com"
+                      placeholder="e.g. owner@company.in"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
@@ -700,7 +700,7 @@ export const AuthView: React.FC = () => {
                       id="reset-email"
                       type="email"
                       autoComplete="email"
-                      placeholder="e.g. staff@vetrify.com"
+                      placeholder="e.g. staff@company.in"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
@@ -759,7 +759,7 @@ export const AuthView: React.FC = () => {
           {/* Footer Terminal Notice */}
           <div className="pt-8 mt-6 border-t border-[#F1F5F9] text-center max-w-md w-full mx-auto">
             <p className="text-[11px] text-[#94A3B8]">
-              Vetrify &bull; Billing, Inventory &amp; E-commerce &bull; v1.0 Production
+              DecorBiz &bull; Showroom Billing, Inventory &amp; Storefront
             </p>
           </div>
         </div>

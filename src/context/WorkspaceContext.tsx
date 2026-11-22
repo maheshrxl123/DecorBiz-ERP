@@ -17,6 +17,7 @@ import { staffService } from '../services/staffService';
 import { auditService } from '../services/auditService';
 import { roleResolverService, ResolvedRolePermissions } from '../services/roleResolverService';
 import { storeResolverService, ResolvedStoreAccess } from '../services/storeResolverService';
+import { moduleSettingsService } from '../services/moduleSettingsService';
 import {
   Organization,
   PharmacyStore,
@@ -71,6 +72,10 @@ interface WorkspaceContextType {
   isLoading: boolean;
   hasWorkspace: boolean;
   error: string | null;
+  activeModules: Record<string, boolean>;
+  isSimpleMode: boolean;
+  isModuleEnabled: (moduleId: string) => boolean;
+  updateModules: (updates: Record<string, boolean>) => Promise<void>;
   hasPermission: (permission: Permission) => boolean;
   canAccessStore: (storeId: string) => boolean;
   switchOrganization: (orgId: string) => Promise<void>;
@@ -96,6 +101,9 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [availableMemberships, setAvailableMemberships] = useState<AvailableMembership[]>([]);
   const [selectedOrgIdOverride, setSelectedOrgIdOverride] = useState<string | null>(null);
   const [workspaceState, setWorkspaceState] = useState<ExtendedWorkspaceState>('checking');
+  const [activeModules, setActiveModules] = useState<Record<string, boolean>>(() =>
+    moduleSettingsService.getSimpleModeDefaults()
+  );
   const [error, setError] = useState<string | null>(null);
 
   const isProvisioningRef = useRef<boolean>(false);
@@ -273,6 +281,10 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       setCurrentStore(storeAccess.defaultStore);
       setResolvedStoreAccess(storeAccess);
 
+      // 6. Load Owner module switches (defaults to Simple Mode per PRD Section 4.1)
+      const loadedModules = await moduleSettingsService.loadModuleSettings(activeOrg.id);
+      setActiveModules(loadedModules);
+
       if (storeAccess.accessibleStores.length === 0) {
         setWorkspaceState('no-accessible-store');
       } else {
@@ -332,6 +344,34 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const hasPermission = (permission: Permission): boolean => {
     return roleResolverService.hasPermission(resolvedRole, permission);
   };
+
+  /**
+   * Check whether a PRD module switch is currently enabled
+   */
+  const isModuleEnabled = useCallback(
+    (moduleId: string): boolean => {
+      if (moduleId === 'dashboard' || moduleId === 'billing' || moduleId === 'settings') {
+        return true;
+      }
+      return Boolean(activeModules[moduleId]);
+    },
+    [activeModules]
+  );
+
+  /**
+   * Persist updated module switches to Cloud Firestore (Owner/Admin only)
+   */
+  const updateModules = useCallback(
+    async (updates: Record<string, boolean>) => {
+      if (!organization?.id || !user?.uid) {
+        throw new Error('Active showroom workspace is required to update module settings.');
+      }
+      const nextMap = { ...activeModules, ...updates };
+      const saved = await moduleSettingsService.saveModuleSettings(organization.id, nextMap, user.uid);
+      setActiveModules(saved);
+    },
+    [activeModules, organization?.id, user?.uid]
+  );
 
   /**
    * Check if current staff user can access a specific store ID
@@ -403,6 +443,11 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
+  const isSimpleMode = useMemo(
+    () => moduleSettingsService.isSimpleModeConfig(activeModules),
+    [activeModules]
+  );
+
   const value = useMemo<WorkspaceContextType>(
     () => ({
       firestoreUser,
@@ -418,6 +463,10 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       isLoading: workspaceState === 'checking' || workspaceState === 'provisioning',
       hasWorkspace: workspaceState === 'active-membership' && !!organization && !!currentStore && !!currentStaff && !!resolvedRole,
       error,
+      activeModules,
+      isSimpleMode,
+      isModuleEnabled,
+      updateModules,
       hasPermission,
       canAccessStore,
       switchOrganization,
@@ -438,6 +487,10 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       availableMemberships,
       workspaceState,
       error,
+      activeModules,
+      isSimpleMode,
+      isModuleEnabled,
+      updateModules,
       loadWorkspace,
     ]
   );

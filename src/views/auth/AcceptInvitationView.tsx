@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { staffInvitationService } from '../../services/staffInvitationService';
 import { StaffInvitation } from '../../types/firestore';
-import { RxLogo } from '../../design/RxLogo';
+import { DecorBizLogo } from '../../design/DecorBizLogo';
 import { Building2, CheckCircle2, AlertCircle, Sparkles, LogOut, Lock, User, Eye, EyeOff, KeyRound } from 'lucide-react';
 
 interface AcceptInvitationViewProps {
@@ -13,6 +14,7 @@ interface AcceptInvitationViewProps {
 type SetupMode = 'create' | 'login' | 'ready';
 
 export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ inviteId, orgId }) => {
+  const navigate = useNavigate();
   const { user, signOut, signUp, signIn, error: authError, clearError } = useAuth();
   const [invitation, setInvitation] = useState<StaffInvitation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,8 +146,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
         }
       });
       // Clean up invite query params and navigate to the ERP workspace
-      window.history.replaceState({}, document.title, '/erp');
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      navigate('/erp', { replace: true });
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to accept invitation.');
       setIsSubmitting(false);
@@ -157,7 +158,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
       <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-center items-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-8 text-center">
           <div className="flex justify-center mb-6">
-            <RxLogo variant="primary" size="md" />
+            <DecorBizLogo size="md" showTagline={false} />
           </div>
           <div className="w-8 h-8 border-2 border-[#0D5C63] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm text-[#64748B]">Verifying invitation...</p>
@@ -191,7 +192,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
       <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-center items-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-8">
           <div className="flex justify-center mb-6">
-            <RxLogo variant="primary" size="md" />
+            <DecorBizLogo size="md" showTagline={false} />
           </div>
           <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-[#FEF2F2] rounded-full flex items-center justify-center mx-auto text-[#B91C1C]">
@@ -201,10 +202,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
             <p className="text-sm text-[#475569] leading-relaxed">{errorExplanation}</p>
             <div className="pt-4 flex flex-col gap-3">
               <button
-                onClick={() => {
-                  window.history.replaceState({}, document.title, '/erp');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
+                onClick={() => navigate('/erp', { replace: true })}
                 className="w-full py-2.5 rounded-xl border border-[#CBD5E1] font-bold text-[#0B1F33] hover:bg-[#F8FAFC]"
               >
                 Go to Dashboard
@@ -227,8 +225,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
   if (!invitation) return null;
 
   const handleGoToDashboard = () => {
-    window.history.replaceState({}, document.title, '/erp');
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    navigate('/erp', { replace: true });
   };
 
   // Status: Accepted
@@ -237,7 +234,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
       <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-center items-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-8 text-center space-y-5">
           <div className="flex justify-center mb-2">
-            <RxLogo variant="primary" size="md" />
+            <DecorBizLogo size="md" showTagline={false} />
           </div>
           <div className="w-16 h-16 bg-[#DCFCE7] text-[#15803D] rounded-full flex items-center justify-center mx-auto shadow-sm">
             <CheckCircle2 className="w-9 h-9" />
@@ -279,7 +276,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
       <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-center items-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-8 text-center space-y-5">
           <div className="flex justify-center mb-2">
-            <RxLogo variant="primary" size="md" />
+            <DecorBizLogo size="md" showTagline={false} />
           </div>
           <div className="w-16 h-16 bg-[#FEF2F2] text-[#DC2626] rounded-full flex items-center justify-center mx-auto">
             <AlertCircle className="w-8 h-8" />
@@ -317,7 +314,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
       <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-center items-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-8 text-center space-y-5">
           <div className="flex justify-center mb-2">
-            <RxLogo variant="primary" size="md" />
+            <DecorBizLogo size="md" showTagline={false} />
           </div>
           <div className="w-16 h-16 bg-[#FFFBEB] text-[#D97706] rounded-full flex items-center justify-center mx-auto">
             <AlertCircle className="w-8 h-8" />
@@ -345,7 +342,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
     <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-center items-center p-4">
       <div className="max-w-md w-full bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-8">
         <div className="flex justify-center mb-6">
-          <RxLogo variant="primary" size="md" />
+          <DecorBizLogo size="md" showTagline={false} />
         </div>
 
         <div className="text-center mb-6">
@@ -448,7 +445,7 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#0F172A] focus:border-[#0D5C63] focus:ring-1 focus:ring-[#0D5C63] outline-none"
-                  placeholder="e.g. Dr. Jane Doe"
+                  placeholder="e.g. Amit Verma"
                 />
               </div>
             </div>

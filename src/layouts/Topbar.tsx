@@ -1,19 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Search,
-  Bell,
-  HelpCircle,
-  Building,
-  Calendar,
-  ChevronDown,
-  Menu,
-  Languages,
-  Moon,
-  Sun,
-} from 'lucide-react';
+  IconSearch,
+  IconBell,
+  IconChevronDown,
+  IconMenu2,
+  IconLanguage,
+  IconMoon,
+  IconSun,
+  IconBuildingStore,
+} from '@tabler/icons-react';
 import { StoreContext, UserProfile } from '../types';
 import { DecorBizLogo } from '../design/DecorBizLogo';
-import { i18n, t } from '../i18n';
+import { useI18n } from '../i18n';
 
 interface TopbarProps {
   currentStore: StoreContext;
@@ -32,23 +30,13 @@ export const Topbar: React.FC<TopbarProps> = ({
   currentUser,
   unreadNotificationsCount = 0,
   onOpenSearch,
-  onOpenHelp,
   onOpenNotifications,
   onOpenStoreSelector,
   onOpenProfile,
   onOpenMobileMenu,
 }) => {
-  const [lang, setLang] = useState(i18n.language);
+  const { lang, toggleLanguage, t } = useI18n();
   const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    return i18n.subscribe((newLang) => setLang(newLang));
-  }, []);
-
-  const toggleLanguage = () => {
-    const nextLang = lang === 'en' ? 'hi' : 'en';
-    i18n.setLanguage(nextLang);
-  };
 
   const toggleTheme = () => {
     const nextTheme = !isDark;
@@ -66,7 +54,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           aria-label="Open mobile navigation menu"
           className="md:hidden p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl cursor-pointer flex-shrink-0"
         >
-          <Menu className="w-5 h-5" />
+          <IconMenu2 className="w-5 h-5" />
         </button>
 
         <div className="md:hidden flex-shrink-0">
@@ -81,7 +69,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             className="w-full flex items-center justify-between px-3 py-1.5 sm:py-2 bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-300 rounded-xl text-xs text-stone-500 transition-all cursor-pointer shadow-xs group"
           >
             <div className="flex items-center gap-2 overflow-hidden">
-              <Search className="w-4 h-4 text-[#1F4D3A] flex-shrink-0" />
+              <IconSearch className="w-4 h-4 text-[#1F4D3A] flex-shrink-0" />
               <span className="truncate text-[11px] sm:text-xs">
                 {t('actions.search', 'Search name, SKU, or barcode...')}
               </span>
@@ -93,8 +81,20 @@ export const Topbar: React.FC<TopbarProps> = ({
         </div>
       </div>
 
-      {/* Right: Language, Theme, Help, Notifications, Profile */}
+      {/* Right: Branch, Language, Theme, Notifications, Profile */}
       <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        {currentStore.name && (
+          <button
+            type="button"
+            onClick={onOpenStoreSelector}
+            className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-xs font-medium text-[#1C1917] transition-colors cursor-pointer max-w-[180px]"
+            title="Switch active showroom / godown"
+          >
+            <IconBuildingStore className="w-4 h-4 text-[#1F4D3A] flex-shrink-0" />
+            <span className="truncate">{currentStore.name}</span>
+          </button>
+        )}
+
         {/* Language Switcher (PRD Section 5.1 & Section 17) */}
         <button
           type="button"
@@ -102,18 +102,18 @@ export const Topbar: React.FC<TopbarProps> = ({
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-xs font-semibold text-[#1F4D3A] transition-colors cursor-pointer"
           title="Switch Language (English / हिन्दी)"
         >
-          <Languages className="w-4 h-4 text-[#1F4D3A]" />
+          <IconLanguage className="w-4 h-4 text-[#1F4D3A]" />
           <span className="text-xs">{lang === 'en' ? 'हिन्दी' : 'English'}</span>
         </button>
 
-        {/* Theme Switcher (PRD Section 5.1 & Section 17) */}
+        {/* Theme Switcher */}
         <button
           type="button"
           onClick={toggleTheme}
           className="p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer"
           title="Toggle Dark / Light Mode"
         >
-          {isDark ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
+          {isDark ? <IconSun className="w-4 h-4 text-amber-500" /> : <IconMoon className="w-4 h-4" />}
         </button>
 
         {/* Notifications */}
@@ -123,7 +123,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           className="relative p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer"
           title="Notifications"
         >
-          <Bell className="w-4.5 h-4.5" />
+          <IconBell className="w-5 h-5" />
           {unreadNotificationsCount > 0 && (
             <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#B91C1C] text-white text-[10px] font-bold flex items-center justify-center tabular-nums ring-2 ring-white">
               {unreadNotificationsCount}
@@ -151,7 +151,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               {currentUser.role || 'Staff Member'}
             </span>
           </div>
-          <ChevronDown className="w-3.5 h-3.5 text-stone-400 hidden sm:block flex-shrink-0" />
+          <IconChevronDown className="w-3.5 h-3.5 text-stone-400 hidden sm:block flex-shrink-0" />
         </button>
       </div>
     </header>

@@ -54,6 +54,7 @@ import {
 import { db } from '../lib/firebase/config';
 import { ComboSuiteBuilderModal } from '../components/pos/ComboSuiteBuilderModal';
 import { ArchitectCommissionModal } from '../components/pos/ArchitectCommissionModal';
+import { useI18n } from '../i18n';
 
 interface HeldBill {
   id: string;
@@ -69,6 +70,7 @@ interface HeldBill {
 export const PosView: React.FC = () => {
   const { organization, currentStore, currentStaff } = useWorkspace();
   const { user } = useAuth();
+  const { t } = useI18n();
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -834,7 +836,7 @@ export const PosView: React.FC = () => {
       let invs = await posService.getRecentInvoices(organization.id, currentStore?.id, 30);
       if (invs.length === 0) {
         try {
-          const cached = JSON.parse(localStorage.getItem(`vetrify_recent_invoices_${organization.id}`) || '[]');
+          const cached = JSON.parse(localStorage.getItem(`decorbiz_recent_invoices_${organization.id}`) || '[]');
           if (cached && cached.length > 0) invs = cached;
         } catch {}
       }
@@ -842,7 +844,7 @@ export const PosView: React.FC = () => {
     } catch (err) {
       console.error('Error fetching recent invoices:', err);
       try {
-        const cached = JSON.parse(localStorage.getItem(`vetrify_recent_invoices_${organization.id}`) || '[]');
+        const cached = JSON.parse(localStorage.getItem(`decorbiz_recent_invoices_${organization.id}`) || '[]');
         if (cached && cached.length > 0) setRecentInvoices(cached);
       } catch {}
     } finally {
@@ -858,11 +860,11 @@ export const PosView: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-              {currentStore?.name || 'Retail POS Counter'}
+              {currentStore?.name || t('nav.bills', 'Billing (POS)')}
             </h2>
           </div>
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
-            Store: <strong className="text-slate-800 dark:text-slate-200">{currentStore?.code || 'MAIN'}</strong> • Cashier: {currentStaff?.displayName || user?.displayName || 'Rahul P.'}
+            {currentStore?.code || 'MAIN'} • {currentStaff?.displayName || user?.displayName || 'Staff'}
           </span>
         </div>
 
@@ -900,7 +902,7 @@ export const PosView: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 text-xs font-bold text-teal-700 dark:text-teal-300 transition-colors cursor-pointer"
           >
             <Calculator className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            <span>Tile Calculator</span>
+            <span>{t('calculator.title', 'Tile Area Calculator')}</span>
           </button>
 
           {/* Quotations / Estimates Drawer */}
@@ -910,7 +912,7 @@ export const PosView: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-xs font-bold text-amber-700 dark:text-amber-300 transition-colors cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            <span>Quotations</span>
+            <span>{t('nav.quotations', 'Quotations')}</span>
             {quotations.length > 0 && (
               <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-mono font-bold">
                 {quotations.length}
@@ -1326,13 +1328,13 @@ export const PosView: React.FC = () => {
 
             {/* Payment Method Selector */}
             <div className="mt-3 space-y-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Payment Mode</span>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{t('billing.paymentMode', 'Payment Mode')}</span>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: 'upi', label: 'UPI / QR', icon: QrCode },
-                  { id: 'cash', label: 'Cash (F9)', icon: Banknote },
-                  { id: 'card', label: 'Card / POS', icon: CreditCard },
-                  { id: 'credit', label: 'Credit / Khata', icon: RotateCcw },
+                  { id: 'upi', label: t('billing.upi', 'UPI'), icon: QrCode },
+                  { id: 'cash', label: t('billing.cash', 'Cash'), icon: Banknote },
+                  { id: 'card', label: t('billing.card', 'Card'), icon: CreditCard },
+                  { id: 'credit', label: t('billing.credit', 'Credit (Khata)'), icon: RotateCcw },
                 ].map((mode) => {
                   const Icon = mode.icon;
                   const isSelected = paymentMode === mode.id;
@@ -1440,7 +1442,7 @@ export const PosView: React.FC = () => {
                 </div>
               )}
               <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-baseline justify-between">
-                <span className="text-sm font-black text-slate-900 dark:text-white uppercase">Grand Total</span>
+                <span className="text-sm font-black text-slate-900 dark:text-white uppercase">{t('billing.total', 'Total Amount')}</span>
                 <span className="text-xl font-black text-teal-600 dark:text-teal-400 font-mono">
                   ₹{safeToFixed(billSummary.grandTotal)}
                 </span>
@@ -1460,12 +1462,12 @@ export const PosView: React.FC = () => {
               {isCheckingOut ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Processing Sale Transaction...</span>
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
                   <Printer className="w-4 h-4" />
-                  <span>Settle &amp; Print Tax Invoice</span>
+                  <span>{t('billing.settleBill', 'Settle & Print Bill')}</span>
                 </>
               )}
             </button>
@@ -1478,7 +1480,7 @@ export const PosView: React.FC = () => {
               className="w-full py-2 px-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-xs font-bold text-amber-800 dark:text-amber-200 flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5 text-amber-600" />
-              <span>Save as Quotation / Estimate</span>
+              <span>{t('billing.saveQuotation', 'Save Quotation')}</span>
             </button>
 
             <div className="grid grid-cols-2 gap-2">
@@ -1489,7 +1491,7 @@ export const PosView: React.FC = () => {
                 className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 <Pause className="w-3.5 h-3.5" />
-                <span>Hold Bill</span>
+                <span>{t('billing.holdBill', 'Hold Bill')}</span>
               </button>
               <button
                 type="button"
@@ -1498,7 +1500,7 @@ export const PosView: React.FC = () => {
                 className="py-2 px-3 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear Cart</span>
+                <span>{t('actions.cancel', 'Clear')}</span>
               </button>
             </div>
           </div>
@@ -1529,7 +1531,7 @@ export const PosView: React.FC = () => {
           const updated = quotations.filter((q) => q.id !== id);
           setQuotations(updated);
           try {
-            localStorage.setItem('vetrify_pos_quotations', JSON.stringify(updated));
+            localStorage.setItem('decorbiz_pos_quotations', JSON.stringify(updated));
           } catch {}
         }}
       />

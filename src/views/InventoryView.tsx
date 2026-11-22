@@ -41,10 +41,12 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../auth/AuthProvider';
 import { useToast } from '../context/ToastContext';
 import { safeToFixed } from '../lib/formatting/formatters';
+import { useI18n } from '../i18n';
 
 export const InventoryView: React.FC = () => {
   const { organization } = useWorkspace();
   const { error, success } = useToast();
+  const { t } = useI18n();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -187,11 +189,11 @@ export const InventoryView: React.FC = () => {
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
-        title="Showroom Universal Catalog"
-        subtitle="Canonical Masters for Tiles, Sanitaryware, Faucets, Tile Adhesives & Plumbing Pipes"
+        title={t('nav.inventory', 'Items & Stock')}
+        subtitle={`${t('productLines.tiles', 'Tiles & Slabs')} · ${t('productLines.sanitary', 'Sanitaryware')} · ${t('productLines.faucets', 'Faucets & CP')} · ${t('productLines.adhesive', 'Tiles Adhesive')} · ${t('productLines.general', 'Other/General')}`}
         badge={
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E6F4F1] text-[#0D5C63] text-xs font-bold border border-[#0D5C63]/20">
-            Multi-Category Showroom
+            {t('glossary.productLine', 'Product line')}
           </span>
         }
         primaryAction={
@@ -204,7 +206,7 @@ export const InventoryView: React.FC = () => {
               setIsAddModalOpen(true);
             }}
           >
-            Add Showroom SKU
+            {t('actions.addItem', 'Add Item')}
           </Button>
         }
         secondaryActions={
@@ -240,12 +242,12 @@ export const InventoryView: React.FC = () => {
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <KpiCard
-          title="Active Master SKUs"
+          title={t('glossary.item', 'Item')}
           value={products.length}
           subValue="Total Catalog SKUs"
         />
         <KpiCard
-          title="Tiles & Slabs"
+          title={t('productLines.tiles', 'Tiles & Slabs')}
           value={products.filter((p) => p.categoryType === 'tiles' || !p.categoryType).length}
           subValue="Vitrified / Ceramic"
         />

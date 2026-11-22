@@ -20,7 +20,7 @@ import { DashboardSkeleton } from '../components/common/LoadingSkeleton';
 import { EmptyState } from '../components/common/EmptyState';
 import { NavModuleId } from '../types';
 import { safeToFixed } from '../lib/formatting/formatters';
-import { t } from '../i18n';
+import { useI18n } from '../i18n';
 import { formatINR } from '../core/money';
 
 interface DashboardViewProps {
@@ -30,6 +30,7 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpenAddProduct }) => {
   const { organization, stores, isLoading: workspaceIsLoading } = useWorkspace();
+  const { t } = useI18n();
   
   const [data, setData] = useState<DashboardData | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -150,8 +151,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Operations & Sales Dashboard"
-          subtitle="Real-time multi-channel sales, inventory health, and operational alerts"
+          title={t('dashboard.title', 'Showroom Overview')}
+          subtitle={t('dashboard.subtitle', 'Live sales, receivables, payables, and stock health from Cloud Firestore')}
           secondaryActions={
             <Button variant="secondary" size="sm" onClick={handleRefresh} icon={RefreshCw}>
               Refresh Dashboard
@@ -159,18 +160,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
           }
         />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-          <KpiCard title="Today's Sales" value="—" isEmpty emptyMessage="No bills completed" />
-          <KpiCard title="Gross Margin" value="—" isEmpty emptyMessage="No transactions yet" />
-          <KpiCard title="Bills Created" value="—" isEmpty emptyMessage="Counter ready" />
-          <KpiCard title="Cash in Drawer" value="—" isEmpty emptyMessage="Shift not opened" />
-          <KpiCard title="Low Stock Items" value="—" isEmpty emptyMessage="Inventory normal" />
-          <KpiCard title="Breakage / Scrap (<60D)" value="—" isEmpty emptyMessage="0 damaged items" />
+          <KpiCard title={t('dashboard.todaySales', "Today's Sales")} value="—" isEmpty emptyMessage="No bills completed" />
+          <KpiCard title={t('dashboard.youllGet', "You'll Get (Receivables)")} value="—" isEmpty emptyMessage="No receivables yet" />
+          <KpiCard title={t('dashboard.youllGive', "You'll Give (Payables)")} value="—" isEmpty emptyMessage="No payables yet" />
+          <KpiCard title={t('billing.cash', 'Cash')} value="—" isEmpty emptyMessage="Counter ready" />
+          <KpiCard title={t('dashboard.lowStock', 'Low Stock Alerts')} value="—" isEmpty emptyMessage="Inventory normal" />
+          <KpiCard title={t('dashboard.onlineOrders', 'Website Orders Pending')} value="—" isEmpty emptyMessage="No pending orders" />
         </div>
         <EmptyState
           type="sales"
           title="No transactions recorded"
           description="Open the Showroom POS to start billing tiles, sanitaryware, and construction materials, or inward opening stock."
-          primaryActionLabel="Open Showroom POS"
+          primaryActionLabel={t('dashboard.newBill', 'New Counter Bill')}
           onPrimaryAction={() => onNavigate('pos')}
         />
       </div>
@@ -190,17 +191,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
-        title="Operations & Sales Dashboard"
-        subtitle="Real-time multi-channel sales, inventory health, and daily alerts"
+        title={t('dashboard.title', 'Showroom Overview')}
+        subtitle={t('dashboard.subtitle', 'Live sales, receivables, payables, and stock health from Cloud Firestore')}
         badge={
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-xs font-bold border border-[#86EFAC]/50">
             <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
-            Live System Active
+            {t('status.active', 'Active')}
           </span>
         }
         primaryAction={
           <Button variant="primary" size="md" icon={Store} onClick={() => onNavigate('pos')}>
-            Open Retail POS
+            {t('dashboard.newBill', 'New Counter Bill')}
           </Button>
         }
         secondaryActions={
@@ -211,7 +212,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
               icon={Plus}
               onClick={() => onNavigate('inventory')}
             >
-              Manage Inventory
+              {t('nav.inventory', 'Items & Stock')}
             </Button>
           </div>
         }
@@ -258,45 +259,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
       {/* KPI Cards Row (PRD Section 19.1 Wireframe) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
         <KpiCard
-          title={timeRange === 'today' ? "Today's Sales" : "Sales Revenue"}
+          title={t('dashboard.todaySales', "Today's Sales")}
           prefix="₹"
           value={activeData.todaySales}
-          subValue={`${activeData.todayBillsCount} bill${activeData.todayBillsCount === 1 ? '' : 's'} in period`}
+          subValue={`${activeData.todayBillsCount} ${t('glossary.bill', 'Bill')}`}
         />
         <KpiCard
-          title="Cash Received"
+          title={t('billing.cash', 'Cash')}
           prefix="₹"
           value={activeData.cashInDrawer || activeData.cashSales || 0}
           subValue="Counter cash in drawer"
         />
         <KpiCard
-          title={`${t('glossary.youllGet', "You'll get")} (Receivables)`}
+          title={t('dashboard.youllGet', "You'll Get (Receivables)")}
           prefix="₹"
           value={activeData.receivables}
           statusVariant="success"
-          actionLabel="View Khata"
+          actionLabel={t('nav.parties', 'Parties & Khata')}
           onAction={() => onNavigate('collections')}
         />
         <KpiCard
-          title={`${t('glossary.youllGive', "You'll give")} (Payables)`}
+          title={t('dashboard.youllGive', "You'll Give (Payables)")}
           prefix="₹"
           value={activeData.payables}
           statusVariant="critical"
-          actionLabel="View Suppliers"
+          actionLabel={t('nav.purchases', 'Purchases')}
           onAction={() => onNavigate('suppliers')}
         />
         <KpiCard
-          title={t('status.lowStock', 'Low Stock')}
+          title={t('dashboard.lowStock', 'Low Stock Alerts')}
           value={activeData.lowStockCount}
           statusVariant="warning"
-          actionLabel="Reorder"
+          actionLabel={t('nav.inventory', 'Items & Stock')}
           onAction={() => onNavigate('inventory')}
         />
         <KpiCard
-          title={t('glossary.websiteOrder', 'Orders to Confirm')}
+          title={t('dashboard.onlineOrders', 'Website Orders Pending')}
           value={activeData.onlineOrdersPending}
           subValue={activeData.onlineOrdersPending > 0 ? 'Awaiting showroom review' : 'No pending web orders'}
-          actionLabel="View Orders"
+          actionLabel={t('glossary.websiteOrder', 'Website Order')}
           onAction={() => onNavigate('ecommerce')}
         />
       </div>

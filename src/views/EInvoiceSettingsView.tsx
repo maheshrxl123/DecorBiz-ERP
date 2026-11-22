@@ -16,7 +16,7 @@ import {
   Download,
 } from 'lucide-react';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { gstService } from '../services/gstService';
+import { gstService, type GspServerStatus } from '../services/gstService';
 import { analyticsService } from '../services/analyticsService';
 import { EInvoiceConfiguration, EInvoiceRecord, EWayBillRecord } from '../types/gst';
 import { SaleInvoice } from '../types/firestore';
@@ -33,6 +33,7 @@ export const EInvoiceSettingsView: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string; latencyMs: number } | null>(null);
+  const [gspStatus, setGspStatus] = useState<GspServerStatus | null>(null);
 
   // IRN & Invoices State
   const [invoices, setInvoices] = useState<SaleInvoice[]>([]);
@@ -62,7 +63,7 @@ export const EInvoiceSettingsView: React.FC = () => {
     if (!organization?.id) return;
     setLoading(true);
     try {
-      const [conf, invList, einvList, ewbList, hsnList] = await Promise.all([
+      const [conf, invList, einvList, ewbList, hsnList, serverStatus] = await Promise.all([
         gstService.getEInvoiceConfig(organization.id).catch((err) => {
           console.warn('Failed to fetch eInvoice config:', err);
           return null;
@@ -83,7 +84,9 @@ export const EInvoiceSettingsView: React.FC = () => {
           console.warn('Failed to fetch HSN audit data:', err);
           return [] as HsnTaxAuditRow[];
         }),
+        gstService.getGspServerStatus().catch(() => null),
       ]);
+      setGspStatus(serverStatus);
 
       if (conf) {
         setConfig(conf);
@@ -218,7 +221,9 @@ export const EInvoiceSettingsView: React.FC = () => {
         },
         cancelEinvModal.id,
         cancelReason,
-        cancelRemarks
+        cancelRemarks,
+        cancelEinvModal.irn,
+        config?.gstin || organization.gstin || ''
       );
       success(`IRN for ${cancelEinvModal.documentNumber} successfully cancelled.`);
       setCancelEinvModal(null);
@@ -256,6 +261,7 @@ export const EInvoiceSettingsView: React.FC = () => {
           fromPincode: ewbFromPincode,
           toPincode: ewbToPincode,
           storeId: selectedInvoiceForEwb.storeId,
+          supplierGstin: config?.gstin || organization.gstin || '',
         }
       );
       success(`E-Way Bill #${ewb.ewayBillNumber} created for ${selectedInvoiceForEwb.invoiceNumber}!`);
@@ -299,12 +305,38 @@ export const EInvoiceSettingsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-emerald-950/80 border border-emerald-600/40 text-emerald-400 text-xs font-mono font-bold rounded-lg flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            IRP Environment: {config.apiEnvironment}
+          <span
+            className={`px-3 py-1 border text-xs font-mono font-bold rounded-lg flex items-center gap-1.5 ${
+              gspStatus?.configured
+                ? 'bg-emerald-950/80 border-emerald-600/40 text-emerald-400'
+                : 'bg-amber-950/80 border-amber-500/40 text-amber-300'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                gspStatus?.configured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
+              }`}
+            />
+            {gspStatus?.configured
+              ? `Server GSP: ${gspStatus.provider} (${gspStatus.environment})`
+              : 'Server GSP: Not Configured'}
           </span>
         </div>
       </div>
+
+      {gspStatus && !gspStatus.configured && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold">Server GSP Gateway Credentials Required (Version 5)</p>
+            <p className="text-amber-800 mt-0.5">
+              Live IRN and E-Way Bill generation routes exclusively through the server GSP adapter. Set{' '}
+              <span className="font-mono font-semibold">{gspStatus.missingFields.join(', ')}</span> in server environment
+              variables to enable live gateway calls. HSN tax reports remain available offline from Firestore bills.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl overflow-x-auto">

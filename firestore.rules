@@ -633,8 +633,17 @@ service cloud.firestore {
     }
 
     match /settings/{settingId} {
-      allow read: if isStaff();
-      allow write: if isOwner();
+      allow read: if isStaff() || (
+        isAuthenticated() &&
+        resource != null &&
+        resource.data.organizationId is string &&
+        isOrgStaff(resource.data.organizationId)
+      );
+      allow write: if isOwner() || (
+        isAuthenticated() &&
+        request.resource.data.organizationId is string &&
+        (isOrgOwner(request.resource.data.organizationId) || isOrgBootstrapOwner(request.resource.data.organizationId))
+      );
     }
 
     match /staff/{uid} {

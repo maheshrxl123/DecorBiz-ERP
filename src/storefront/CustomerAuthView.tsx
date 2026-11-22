@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  IconMail,
+  IconLock,
+  IconUser,
+  IconPhone,
+  IconEye,
+  IconEyeOff,
+  IconAlertCircle,
+} from '@tabler/icons-react';
 import { useAuth } from '../auth/AuthProvider';
 import { DecorBizLogo } from '../design/DecorBizLogo';
 import {
@@ -14,6 +23,7 @@ import {
  * and persists the customer profile in Cloud Firestore (/customers/{uid} and /users/{uid}).
  */
 export const CustomerAuthView: React.FC = () => {
+  const navigate = useNavigate();
   const { signIn, signUp, error, clearError } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
@@ -76,8 +86,7 @@ export const CustomerAuthView: React.FC = () => {
         });
       }
 
-      window.history.pushState({}, '', '/');
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      navigate('/', { replace: true });
     } catch (err: any) {
       setLocalError(err?.message || 'Authentication failed');
     } finally {
@@ -88,9 +97,9 @@ export const CustomerAuthView: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F6F3EE] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-[#1F4D3A]/20 selection:text-[#1F4D3A]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <a href="/" className="inline-block mb-4">
+        <Link to="/" className="inline-block mb-4">
           <DecorBizLogo size="lg" showTagline={true} />
-        </a>
+        </Link>
         <h2 className="text-xl font-bold tracking-tight text-[#1C1917]">
           {isRegister ? 'Create Customer Account' : 'Customer Sign In'}
         </h2>
@@ -105,7 +114,7 @@ export const CustomerAuthView: React.FC = () => {
         <div className="bg-white py-8 px-6 shadow-sm border border-[#E7E5E4] rounded-2xl sm:px-10">
           {(error || localError) && (
             <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-800">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600 mt-0.5" />
+              <IconAlertCircle className="w-4 h-4 flex-shrink-0 text-red-600 mt-0.5" />
               <span>{error || localError}</span>
             </div>
           )}
@@ -119,7 +128,7 @@ export const CustomerAuthView: React.FC = () => {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
-                      <User className="w-4 h-4" />
+                      <IconUser className="w-4 h-4" />
                     </div>
                     <input
                       type="text"
@@ -138,7 +147,7 @@ export const CustomerAuthView: React.FC = () => {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
-                      <Phone className="w-4 h-4" />
+                      <IconPhone className="w-4 h-4" />
                     </div>
                     <input
                       type="tel"
@@ -176,7 +185,7 @@ export const CustomerAuthView: React.FC = () => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
-                  <Mail className="w-4 h-4" />
+                  <IconMail className="w-4 h-4" />
                 </div>
                 <input
                   type="email"
@@ -195,7 +204,7 @@ export const CustomerAuthView: React.FC = () => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
-                  <Lock className="w-4 h-4" />
+                  <IconLock className="w-4 h-4" />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -210,7 +219,7 @@ export const CustomerAuthView: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
                 </button>
               </div>
             </div>

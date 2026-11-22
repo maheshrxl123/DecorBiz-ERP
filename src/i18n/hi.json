@@ -4,20 +4,64 @@
     "tagline": "टाइल्स और सैनिटरीवेयर ईआरपी"
   },
   "nav": {
-    "home": "होम",
-    "bills": "बिल",
+    "home": "डैशबोर्ड",
+    "bills": "बिलिंग (POS)",
     "quickActions": "त्वरित कार्य",
-    "parties": "पार्टी",
+    "parties": "पार्टी और खाता",
+    "payments": "भुगतान",
     "more": "अधिक",
-    "inventory": "स्टॉक और आइटम",
+    "inventory": "आइटम और स्टॉक",
     "quotations": "कोटेशन",
     "purchases": "खरीद",
+    "replenishment": "पुनः ऑर्डर",
     "expenses": "खर्च",
     "reports": "रिपोर्ट्स",
+    "gstReports": "जीएसटी रिपोर्ट",
+    "einvoice": "ई-इनवॉइस और ई-वे",
+    "returns": "बिक्री वापसी",
+    "warehouses": "गोदाम और यार्ड",
+    "transfers": "गोदाम ट्रांसफर",
+    "tasks": "कार्य",
+    "auditCentre": "ऑडिट लॉग",
     "settings": "सेटिंग्स",
-    "storefront": "वेबसाइट",
+    "storefront": "ऑनलाइन वेबसाइट",
     "profile": "प्रोफाइल",
     "logout": "लॉग आउट"
+  },
+  "dashboard": {
+    "title": "शोरूम सारांश",
+    "subtitle": "क्लाउड फायरस्टोर से लाइव बिक्री, बकाया और स्टॉक स्थिति",
+    "todaySales": "आज की बिक्री",
+    "youllGet": "आपको मिलेंगे (प्राप्य)",
+    "youllGive": "आपको देने हैं (देय)",
+    "lowStock": "कम स्टॉक अलर्ट",
+    "onlineOrders": "वेबसाइट ऑर्डर लंबित",
+    "newBill": "नया काउंटर बिल",
+    "addItem": "नया आइटम जोड़ें"
+  },
+  "modules": {
+    "title": "मॉड्यूल और सिंपल मोड",
+    "subtitle": "तय करें कि आपके शोरूम में कौन से ईआरपी मॉड्यूल सक्रिय रहेंगे। सिंपल मोड केवल मुख्य स्क्रीन दिखाता है।",
+    "simpleModeActive": "सिंपल मोड सक्रिय",
+    "customModeActive": "कस्टम मॉड्यूल सक्रिय",
+    "resetSimpleMode": "सिंपल मोड पर रीसेट करें",
+    "saveChanges": "मॉड्यूल सेटिंग सुरक्षित करें",
+    "disabledTitle": "मॉड्यूल बंद है",
+    "disabledDescription": "यह मॉड्यूल वर्तमान में सिंपल मोड में बंद है। शोरूम मालिक इसे सेटिंग्स -> मॉड्यूल से चालू कर सकते हैं।",
+    "openModuleSettings": "मॉड्यूल सेटिंग्स खोलें"
+  },
+  "settings": {
+    "title": "सेटिंग्स और कॉन्फ़िगरेशन",
+    "subtitle": "शोरूम मॉड्यूल, स्टाफ अनुमतियाँ, शाखाएँ, भाषा और जीएसटी सेटिंग प्रबंधित करें",
+    "tabs": {
+      "modules": "मॉड्यूल और सिंपल मोड",
+      "staff": "स्टाफ और भूमिकाएँ",
+      "branches": "शोरूम और शाखाएँ",
+      "organization": "व्यवसाय प्रोफ़ाइल",
+      "security": "सुरक्षा और अलर्ट",
+      "audit": "ऑडिट लेज़र"
+    },
+    "language": "प्रदर्शन भाषा"
   },
   "actions": {
     "newBill": "नया बिल",
@@ -62,6 +106,8 @@
     "general": "अन्य"
   },
   "billing": {
+    "taxInvoice": "कर चालान (Tax Invoice)",
+    "quotation": "कोटेशन",
     "subtotal": "उप-योग",
     "discount": "छूट",
     "cgst": "CGST",
@@ -81,7 +127,10 @@
     "sqft": "वर्ग फुट",
     "sqm": "वर्ग मीटर",
     "ratePerSqft": "दर प्रति वर्ग फुट",
-    "amountInWords": "शब्दों में राशि"
+    "amountInWords": "शब्दों में राशि",
+    "settleBill": "बिल बनाएँ और प्रिंट करें",
+    "holdBill": "बिल होल्ड करें",
+    "saveQuotation": "कोटेशन सहेजें"
   },
   "calculator": {
     "title": "टाइल क्षेत्रफल कैलकुलेटर",
