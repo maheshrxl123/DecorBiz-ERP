@@ -3,7 +3,6 @@ import { Printer, X, CheckCircle2, FileText, Truck, ShieldCheck, Phone, MapPin, 
 import { SaleInvoice, Organization, PharmacyStore } from '../../types';
 import { safeToFixed, formatBatchExpiryDate, formatDateTime } from '../../lib/formatting/formatters';
 import { amountInWords } from '../../core/money';
-import { APP_CONFIG } from '../../../config/app.config';
 
 interface InvoicePrintModalProps {
   isOpen: boolean;
@@ -34,22 +33,45 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
   const invoiceDateStr = formatDateTime(invoice.createdAt) || new Date().toLocaleString('en-IN');
 
-  const orgName = organization?.legalName || organization?.name || APP_CONFIG.placeholderBusiness.legalName;
-  const orgGstin = store?.gstin || organization?.gstin || APP_CONFIG.placeholderBusiness.gstin;
+  const orgName = organization?.legalName || organization?.name || '';
+  const orgGstin = store?.gstin || organization?.gstin || '';
   const storeName = store?.name || orgName;
-  const storePhone = store?.phone || APP_CONFIG.placeholderBusiness.phone;
+  const storePhone = store?.phone || '';
   const storeAddress = store?.address
-    ? `${store.address.street || ''}, ${store.address.city || ''}, ${store.address.state || ''} - ${store.address.postalCode || ''}`
-    : APP_CONFIG.placeholderBusiness.address;
+    ? [store.address.street, store.address.city, store.address.state, store.address.postalCode]
+        .filter(Boolean)
+        .join(', ')
+    : '';
 
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(
     `*Tax Invoice ${invoice.invoiceNumber}*\nFrom: ${orgName}\nAmount: ₹${safeToFixed(invoice.grandTotal)}\nItems: ${invoice.items.length}\nThank you for choosing ${storeName}!`
   )}`;
 
   const totalBoxes = invoice.items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalWeightKg = invoice.items.reduce((sum, item) => sum + (item.quantity * 28), 0);
-  const totalWeightTonnes = (totalWeightKg / 1000).toFixed(2);
+  const totalWeightKg = invoice.items.reduce(
+    (sum, item) => sum + item.quantity * (Number((item as any).weightPerBoxKg) || 0),
+    0
+  );
+  const totalWeightTonnes = totalWeightKg > 0 ? (totalWeightKg / 1000).toFixed(2) : '—';
   const invoiceWords = amountInWords(invoice.grandTotal || 0);
+
+  // Aggregate real HSN tax summary from invoice line items
+  const hsnSummaryRows = Object.values(
+    invoice.items.reduce<Record<string, { hsn: string; taxable: number; cgst: number; sgst: number; totalTax: number }>>(
+      (acc, item) => {
+        const hsn = item.hsnCode || '—';
+        if (!acc[hsn]) {
+          acc[hsn] = { hsn, taxable: 0, cgst: 0, sgst: 0, totalTax: 0 };
+        }
+        acc[hsn].taxable += item.taxableAmount || 0;
+        acc[hsn].cgst += item.cgstAmount || 0;
+        acc[hsn].sgst += item.sgstAmount || 0;
+        acc[hsn].totalTax += item.totalTaxAmount || (item.cgstAmount || 0) + (item.sgstAmount || 0);
+        return acc;
+      },
+      {}
+    )
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
@@ -368,9 +390,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   {invoice.customerPhone && (
                     <p className="text-[11px] text-slate-600">Phone: {invoice.customerPhone}</p>
                   )}
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Delivery Address: {storeAddress.includes('Market') ? 'Site Delivery as per dispatch memo' : 'Customer Site'}
-                  </p>
+                  {(invoice as any).deliveryAddress && (
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Delivery Address: {(invoice as any).deliveryAddress}
+                    </p>
+                  )}
                 </div>
 
                 <div className="border border-slate-300 rounded-lg p-3">
@@ -419,7 +443,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                             <span className="text-[10px] text-slate-500 ml-1">({item.dosageForm})</span>
                           )}
                         </td>
-                        <td className="p-2 font-mono text-slate-600">{item.hsnCode || '6907'}</td>
+                        <td className="p-2 font-mono text-slate-600">{item.hsnCode || '—'}</td>
                         <td className="p-2 font-mono font-semibold text-slate-800">
                           {item.shadeNumber || item.batchNumber || '-'}
                           {item.toneCode ? ` / ${item.toneCode}` : ''}
@@ -456,13 +480,15 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-slate-100">
-                        <td className="py-1 font-mono">6907 (Ceramics)</td>
-                        <td className="py-1 text-right">₹{safeToFixed(invoice.taxableAmount)}</td>
-                        <td className="py-1 text-right">₹{safeToFixed(invoice.cgstTotal)}</td>
-                        <td className="py-1 text-right">₹{safeToFixed(invoice.sgstTotal)}</td>
-                        <td className="py-1 text-right font-bold">₹{safeToFixed(invoice.totalTax)}</td>
-                      </tr>
+                      {hsnSummaryRows.map((row) => (
+                        <tr key={row.hsn} className="border-b border-slate-100">
+                          <td className="py-1 font-mono">{row.hsn}</td>
+                          <td className="py-1 text-right">₹{safeToFixed(row.taxable)}</td>
+                          <td className="py-1 text-right">₹{safeToFixed(row.cgst)}</td>
+                          <td className="py-1 text-right">₹{safeToFixed(row.sgst)}</td>
+                          <td className="py-1 text-right font-bold">₹{safeToFixed(row.totalTax)}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                   <div className="mt-3 text-[10px] text-slate-500">
@@ -576,9 +602,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     </h1>
                     <p className="text-xs font-bold text-slate-700">Central Logistics Godown &amp; Bulk Yard</p>
                     <p className="text-[11px] text-slate-600 mt-0.5">{storeAddress}</p>
-                    <p className="text-[11px] text-slate-700 mt-1">
-                      <strong>Yard Contact:</strong> {storePhone} • <strong>Security Desk:</strong> Ext #4
-                    </p>
+                    {storePhone && (
+                      <p className="text-[11px] text-slate-700 mt-1">
+                        <strong>Yard Contact:</strong> {storePhone}
+                      </p>
+                    )}
                   </div>
 
                   <div className="text-right">
@@ -628,7 +656,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     Loading Mode: <strong>{invoice.loadingUnloadingAmount ? 'Hamali Handled by Godown Crew' : 'Driver / Self Loading'}</strong>
                   </p>
                   <p className="text-[11px] text-slate-600">
-                    Dispatched From: <strong>Main Yard Bay 2 (Rack Aisle C)</strong>
+                    Dispatched From: <strong>{storeName || 'Showroom / Godown'}</strong>
                   </p>
                 </div>
               </div>
@@ -651,8 +679,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   </thead>
                   <tbody>
                     {invoice.items.map((item, idx) => {
-                      const estSqFt = item.coverageSqFt || (item.quantity * 15.5);
-                      const estWeight = item.quantity * 28;
+                      const estSqFt = item.coverageSqFt || ((item as any).coveragePerBoxSqFt ? item.quantity * (item as any).coveragePerBoxSqFt : 0);
+                      const estWeight = (Number((item as any).weightPerBoxKg) || 0) * item.quantity;
                       return (
                         <tr
                           key={idx}
@@ -668,22 +696,22 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                             )}
                           </td>
                           <td className="p-2 font-mono font-bold text-slate-900">
-                            {item.shadeNumber || item.batchNumber || 'STANDARD'}
+                            {item.shadeNumber || item.batchNumber || '—'}
                           </td>
                           <td className="p-2 font-mono text-slate-600">
-                            {item.toneCode ? `T:${item.toneCode}` : '-'} {item.caliberCode ? `C:${item.caliberCode}` : ''}
+                            {item.toneCode ? `T:${item.toneCode}` : '—'} {item.caliberCode ? `C:${item.caliberCode}` : ''}
                           </td>
                           <td className="p-2 font-mono text-slate-600">
-                            Bay {((idx % 4) + 1)} - Rack {String.fromCharCode(65 + (idx % 5))}
+                            {(item as any).storageLocation || (item as any).rackLocation || '—'}
                           </td>
                           <td className="p-2 text-center font-black text-slate-950 text-xs">
                             {item.quantity}
                           </td>
                           <td className="p-2 text-right font-mono text-slate-700">
-                            {safeToFixed(estSqFt)}
+                            {estSqFt > 0 ? safeToFixed(estSqFt) : '—'}
                           </td>
                           <td className="p-2 text-right font-mono text-slate-700">
-                            {estWeight} kg
+                            {estWeight > 0 ? `${estWeight} kg` : '—'}
                           </td>
                           <td className="p-2 text-center text-slate-400">
                             <span className="inline-block w-4 h-4 border border-slate-400 rounded"></span>

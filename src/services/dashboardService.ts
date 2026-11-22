@@ -56,6 +56,7 @@ export interface DashboardData {
   averageBill: number;
   cashInDrawer: number;
   receivables: number;
+  payables: number;
   lowStockCount: number;
   nearExpiryCount: number;
   onlineOrdersPending: number;
@@ -221,6 +222,23 @@ export const dashboardService = {
         console.warn('DashboardService: Unable to fetch customers or lack permissions. Defaulting to empty list.', err);
       }
 
+      // 4b. Fetch Suppliers to sum outstanding payables from Firestore
+      let payables = 0;
+      try {
+        const suppliersSnapshot = await getDocs(
+          collection(db, 'organizations', organizationId, 'suppliers')
+        );
+        suppliersSnapshot.docs.forEach((d) => {
+          const s = d.data() as Record<string, any>;
+          const bal = Number(s.currentBalance ?? s.outstandingPayable ?? s.payableBalance ?? s.openingBalance ?? 0);
+          if (Number.isFinite(bal) && bal > 0) {
+            payables += bal;
+          }
+        });
+      } catch (err) {
+        console.warn('DashboardService: Unable to fetch suppliers for payables.', err);
+      }
+
       // 5. Fetch Recent Goods Receipt Notes (Recent Deliveries) (resilient fallback on permission errors)
       const grnsPath = `organizations/${organizationId}/grns`;
       let grnsQuery = query(
@@ -376,12 +394,12 @@ export const dashboardService = {
           current.qty += item.quantity || 0;
           current.sales += item.total || 0;
           
-          // Estimate Margin/Profit: (Sale Price - Estimated Landed Cost)
-          // Landed Cost can be estimated if mrp is present, or let's use 30% margin default if cost not de-normalized
-          const itemMrp = item.mrp || item.unitPrice;
-          const estimatedCost = item.unitPrice * 0.7; // Estimate standard margin
-          current.profit += (item.total || 0) - ((item.quantity || 0) * estimatedCost);
-          
+          const product = activeProducts.find((p) => p.id === item.productId);
+          const knownCost = (item as any).purchaseCost ?? (item as any).landedCost ?? product?.defaultPurchaseCost ?? 0;
+          if (knownCost > 0) {
+            current.profit += (item.total || 0) - ((item.quantity || 0) * knownCost);
+          }
+
           productSalesMap[item.productId] = current;
         });
       });
@@ -390,49 +408,24 @@ export const dashboardService = {
         .map(([id, stats]) => {
           const product = activeProducts.find((p) => p.id === id);
           const name = product ? product.productName : 'Unknown Product';
-          const marginPercent = stats.sales > 0 ? Math.round((stats.profit / stats.sales) * 100) : 30;
+          const marginPercent = stats.sales > 0 && stats.profit > 0
+            ? Math.round((stats.profit / stats.sales) * 100)
+            : 0;
           const imageUrl = product?.imageUrl || product?.mediaUrl || (product as any)?.photoUrl || '';
-          
+
           return {
             productId: id,
             name,
-            dosage: stats.dosage || product?.dosageForm || 'Tablet',
+            dosage: stats.dosage || product?.surfaceFinish || product?.dosageForm || '',
             qtySold: stats.qty,
             sales: Math.round(stats.sales),
             marginPercent,
             imageUrl,
-            schedule: product?.schedule || 'OTC',
+            schedule: product?.tileGrade || product?.schedule || '',
           };
         })
         .sort((a, b) => b.sales - a.sales)
         .slice(0, 5);
-
-      // Populate from active products or standard catalog items if no sales recorded yet today
-      if (topSellingMedicines.length === 0) {
-        if (activeProducts.length > 0) {
-          activeProducts.slice(0, 5).forEach((prod, index) => {
-            const simulatedQty = Math.max(8, 28 - index * 4);
-            const unitPrice = prod.defaultSalePrice || prod.defaultMrp || 1450;
-            topSellingMedicines.push({
-              productId: prod.id,
-              name: prod.productName,
-              dosage: prod.surfaceFinish || prod.dosageForm || 'High Gloss',
-              qtySold: simulatedQty,
-              sales: unitPrice * simulatedQty,
-              marginPercent: prod.minMarginPercent || 28,
-              imageUrl: prod.imageUrl || prod.mediaUrl || (prod as any)?.photoUrl || '',
-              schedule: prod.tileGrade || prod.schedule || 'Premium',
-            });
-          });
-        } else {
-          topSellingMedicines.push(
-            { productId: 'fallback-1', name: 'Royal Statuario Polished GVT 600x1200mm', dosage: 'High Gloss', qtySold: 45, sales: 65250, marginPercent: 32, schedule: 'Premium', imageUrl: '' },
-            { productId: 'fallback-2', name: 'Armani Grey Silk Matt Porcelain 800x1600mm', dosage: 'Silk Matt', qtySold: 28, sales: 68600, marginPercent: 35, schedule: 'Premium', imageUrl: '' },
-            { productId: 'fallback-3', name: 'Catalano Wall-Hung Rimless Water Closet', dosage: 'Glossy White', qtySold: 12, sales: 42000, marginPercent: 28, schedule: 'Standard', imageUrl: '' },
-            { productId: 'fallback-4', name: 'Grohe Eurosmart Single Lever Basin Mixer', dosage: 'Chrome Brass', qtySold: 16, sales: 38400, marginPercent: 30, schedule: 'Premium', imageUrl: '' }
-          );
-        }
-      }
 
       // 8. Recent Deliveries from GRNs
       const recentDeliveries = grns.slice(0, 5).map((grn) => {
@@ -457,6 +450,7 @@ export const dashboardService = {
         averageBill,
         cashInDrawer: Math.round(cashInDrawer),
         receivables: Math.round(receivables),
+        payables: Math.round(payables),
         lowStockCount,
         nearExpiryCount,
         onlineOrdersPending: pendingOnlineOrdersCount,
@@ -487,6 +481,7 @@ export const dashboardService = {
       averageBill: 0,
       cashInDrawer: 0,
       receivables: 0,
+      payables: 0,
       lowStockCount: 0,
       nearExpiryCount: 0,
       onlineOrdersPending: 0,

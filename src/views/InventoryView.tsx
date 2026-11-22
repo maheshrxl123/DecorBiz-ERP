@@ -408,7 +408,7 @@ export const InventoryView: React.FC = () => {
                         </td>
                         <td className="py-3 px-3">
                           <span className="font-mono text-xs font-semibold px-2 py-0.5 bg-[#F1F5F9] rounded text-[#475569]">
-                            {prod.rackLocation || 'Yard Bay A-01'}
+                            {prod.rackLocation || '—'}
                           </span>
                         </td>
                         <td className="py-3 px-3">

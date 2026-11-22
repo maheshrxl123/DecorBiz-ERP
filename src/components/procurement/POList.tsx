@@ -391,7 +391,7 @@ export const POList: React.FC = () => {
                     setSelectedProductId(val);
                     const prod = products.find((p) => p.id === val);
                     if (prod) {
-                      setItemUnitCost(prod.defaultPurchaseCost || prod.unitPurchasePrice || 10);
+                      setItemUnitCost(prod.defaultPurchaseCost || prod.unitPurchasePrice || 0);
                     }
                   }}
                   options={products.map((p) => {
@@ -399,7 +399,7 @@ export const POList: React.FC = () => {
                     return {
                       value: p.id,
                       label: `${p.productName} ${p.tileDimensions ? `(${p.tileDimensions})` : ''}`,
-                      subLabel: `${p.manufacturerName || p.brand || 'Vetrify'} • ${p.categoryType ? p.categoryType.toUpperCase() : 'Building Material'}`,
+                      subLabel: `${[p.manufacturerName || p.brand, p.categoryType ? p.categoryType.toUpperCase() : ''].filter(Boolean).join(' • ') || 'Catalog Item'}`,
                       sku: p.sku,
                       badge: gradeBadge,
                       badgeColor: 'teal' as any,

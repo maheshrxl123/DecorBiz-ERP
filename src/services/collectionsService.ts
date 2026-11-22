@@ -351,8 +351,8 @@ export const collectionsService = {
 
     return {
       organizationId,
-      organizationName: orgMeta?.name || 'Vetrify Ceramic & Sanitary Showroom',
-      organizationGstin: orgMeta?.gstin || '07AAAAA0000A1Z5',
+      organizationName: orgMeta?.name || '',
+      organizationGstin: orgMeta?.gstin || '',
       organizationPhone: orgMeta?.phone || '',
       customer,
       periodStart: firstDate,

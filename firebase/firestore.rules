@@ -603,6 +603,21 @@ service cloud.firestore {
         allow create, update: if isOrgStaff(orgId);
         allow delete: if isOrgAdminOrOwner(orgId);
       }
+
+      match /breakageLogs/{logId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /architectPartners/{partnerId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /quotations/{quotationId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
     }
 
     // =========================================================================
@@ -610,7 +625,11 @@ service cloud.firestore {
     // =========================================================================
     match /business/{docId} {
       allow read: if true;
-      allow write: if isOwner();
+      allow write: if isOwner() || (
+        isAuthenticated() &&
+        request.resource.data.organizationId is string &&
+        (isOrgOwner(request.resource.data.organizationId) || isOrgBootstrapOwner(request.resource.data.organizationId))
+      );
     }
 
     match /settings/{settingId} {

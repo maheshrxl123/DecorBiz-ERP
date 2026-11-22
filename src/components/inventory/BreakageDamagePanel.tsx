@@ -1,27 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   AlertTriangle,
   Plus,
-  ShieldAlert,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  FileText,
-  Search,
-  Filter,
-  Package,
-  Box,
-  Truck,
+  RefreshCw,
 } from 'lucide-react';
+import {
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  query,
+  orderBy,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { db } from '../../lib/firebase/config';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import { SearchInput, Select } from '../ui/Input';
+import { SearchInput, Select, FormField, TextInput, CurrencyInput } from '../ui/Input';
 import { Modal } from '../ui/Modal';
-import { FormField, TextInput, CurrencyInput } from '../ui/Input';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useAuth } from '../../auth/AuthProvider';
 import { useToast } from '../../context/ToastContext';
-import { safeToFixed } from '../../lib/formatting/formatters';
+import { safeToFixed, parseFirestoreTimestamp } from '../../lib/formatting/formatters';
 
 interface BreakageLogEntry {
   id: string;
@@ -39,107 +38,141 @@ interface BreakageLogEntry {
   notes: string;
 }
 
+const EMPTY_FORM = {
+  productName: '',
+  sku: '',
+  shadeLotCode: '',
+  damagedBoxes: 1,
+  damagedPieces: 0,
+  reason: 'corner_chipped' as BreakageLogEntry['reason'],
+  estimatedLossValue: 0,
+  claimStatus: 'pending' as BreakageLogEntry['claimStatus'],
+  godownBay: '',
+  notes: '',
+};
+
 export const BreakageDamagePanel: React.FC = () => {
   const { organization } = useWorkspace();
   const { user } = useAuth();
-  const { success, warning } = useToast();
+  const { success, warning, error: toastError } = useToast();
 
-  const [logs, setLogs] = useState<BreakageLogEntry[]>([
-    {
-      id: 'DMG-1001',
-      productName: 'Statuario High Gloss Vitrified Tile 600x1200',
-      sku: 'TIL-VT-6012',
-      shadeLotCode: 'Shade S-402 / Lot 12B',
-      damagedBoxes: 4,
-      damagedPieces: 16,
-      reason: 'transit_shatter',
-      estimatedLossValue: 3400,
-      claimStatus: 'pending',
-      godownBay: 'Yard Bay A-04',
-      reportedBy: user?.displayName || 'Yard Staff',
-      reportedAt: new Date().toISOString(),
-      notes: 'Bottom corner box crushed during highway transit truck braking.',
-    },
-    {
-      id: 'DMG-1002',
-      productName: 'Carving Oak Wood Finish Plank Tile 200x1200',
-      sku: 'TIL-CW-2012',
-      shadeLotCode: 'Shade W-105 / Lot 04A',
-      damagedBoxes: 2,
-      damagedPieces: 8,
-      reason: 'loading_drop',
-      estimatedLossValue: 1850,
-      claimStatus: 'claimed',
-      godownBay: 'Yard Shed 2',
-      reportedBy: 'Forklift Operator',
-      reportedAt: new Date(Date.now() - 86400000).toISOString(),
-      notes: 'Forklift pallet slip during unloading from supplier container.',
-    },
-  ]);
+  const [logs, setLogs] = useState<BreakageLogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReason, setSelectedReason] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newLog, setNewLog] = useState({
-    productName: '',
-    sku: '',
-    shadeLotCode: 'Shade S-101 / Lot 01',
-    damagedBoxes: 1,
-    damagedPieces: 4,
-    reason: 'corner_chipped' as BreakageLogEntry['reason'],
-    estimatedLossValue: 850,
-    claimStatus: 'pending' as BreakageLogEntry['claimStatus'],
-    godownBay: 'Yard Bay A-01',
-    notes: '',
-  });
+  const [newLog, setNewLog] = useState(EMPTY_FORM);
 
-  const handleAddLog = (e: React.FormEvent) => {
+  const loadBreakageLogs = useCallback(async () => {
+    if (!organization?.id) {
+      setLogs([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const colRef = collection(db, 'organizations', organization.id, 'breakageLogs');
+      let snap;
+      try {
+        snap = await getDocs(query(colRef, orderBy('createdAt', 'desc')));
+      } catch {
+        snap = await getDocs(colRef);
+      }
+
+      const loaded: BreakageLogEntry[] = snap.docs.map((d) => {
+        const data = d.data() as Record<string, any>;
+        const dt = parseFirestoreTimestamp(data.createdAt);
+        return {
+          id: d.id,
+          productName: data.productName || '',
+          sku: data.sku || '',
+          shadeLotCode: data.shadeLotCode || '',
+          damagedBoxes: Number(data.damagedBoxes) || 0,
+          damagedPieces: Number(data.damagedPieces) || 0,
+          reason: data.reason || 'transit_shatter',
+          estimatedLossValue: Number(data.estimatedLossValue) || 0,
+          claimStatus: data.claimStatus || 'pending',
+          godownBay: data.godownBay || '',
+          reportedBy: data.reportedBy || '',
+          reportedAt: data.reportedAt || (dt ? dt.toISOString() : new Date().toISOString()),
+          notes: data.notes || '',
+        };
+      });
+      setLogs(loaded);
+    } catch (err: any) {
+      console.error('Failed to load breakage logs from Firestore:', err);
+      toastError(err?.message || 'Failed to load breakage logs from Cloud Firestore.');
+      setLogs([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [organization?.id, toastError]);
+
+  useEffect(() => {
+    loadBreakageLogs();
+  }, [loadBreakageLogs]);
+
+  const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!organization?.id) {
+      warning('Active organization is required to save breakage logs.', 'Workspace Required');
+      return;
+    }
     if (!newLog.productName.trim()) {
       warning('Please enter tile product name / SKU.', 'Validation Error');
       return;
     }
 
-    const entry: BreakageLogEntry = {
-      id: `DMG-${1000 + logs.length + 1}`,
-      productName: newLog.productName,
-      sku: newLog.sku || 'SKU-TIL-NEW',
-      shadeLotCode: newLog.shadeLotCode,
-      damagedBoxes: Number(newLog.damagedBoxes) || 0,
-      damagedPieces: Number(newLog.damagedPieces) || 0,
-      reason: newLog.reason,
-      estimatedLossValue: Number(newLog.estimatedLossValue) || 0,
-      claimStatus: newLog.claimStatus,
-      godownBay: newLog.godownBay,
-      reportedBy: user?.displayName || 'Yard Staff',
-      reportedAt: new Date().toISOString(),
-      notes: newLog.notes,
-    };
+    setIsSaving(true);
+    try {
+      const docId = `DMG-${Date.now().toString().slice(-6)}`;
+      const entry: BreakageLogEntry = {
+        id: docId,
+        productName: newLog.productName.trim(),
+        sku: newLog.sku.trim(),
+        shadeLotCode: newLog.shadeLotCode.trim(),
+        damagedBoxes: Number(newLog.damagedBoxes) || 0,
+        damagedPieces: Number(newLog.damagedPieces) || 0,
+        reason: newLog.reason,
+        estimatedLossValue: Number(newLog.estimatedLossValue) || 0,
+        claimStatus: newLog.claimStatus,
+        godownBay: newLog.godownBay.trim(),
+        reportedBy: user?.displayName || user?.email || 'Staff',
+        reportedAt: new Date().toISOString(),
+        notes: newLog.notes.trim(),
+      };
 
-    setLogs([entry, ...logs]);
-    success(`Logged breakage report #${entry.id} for ${entry.damagedBoxes} box(es).`, 'Damage Recorded');
-    setIsModalOpen(false);
-    setNewLog({
-      productName: '',
-      sku: '',
-      shadeLotCode: 'Shade S-101 / Lot 01',
-      damagedBoxes: 1,
-      damagedPieces: 4,
-      reason: 'corner_chipped',
-      estimatedLossValue: 850,
-      claimStatus: 'pending',
-      godownBay: 'Yard Bay A-01',
-      notes: '',
-    });
+      await setDoc(doc(db, 'organizations', organization.id, 'breakageLogs', docId), {
+        ...entry,
+        organizationId: organization.id,
+        reportedByUid: user?.uid || null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setLogs((prev) => [entry, ...prev]);
+      success(`Logged breakage report #${entry.id} for ${entry.damagedBoxes} box(es).`, 'Damage Recorded');
+      setIsModalOpen(false);
+      setNewLog(EMPTY_FORM);
+    } catch (err: any) {
+      console.error('Failed to save breakage log:', err);
+      toastError(err?.message || 'Failed to record breakage report in Firestore.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const filteredLogs = logs.filter((log) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      log.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.shadeLotCode.toLowerCase().includes(searchQuery.toLowerCase());
+      !q ||
+      log.productName.toLowerCase().includes(q) ||
+      log.sku.toLowerCase().includes(q) ||
+      log.shadeLotCode.toLowerCase().includes(q);
     const matchesReason = selectedReason === 'all' || log.reason === selectedReason;
     const matchesStatus = selectedStatus === 'all' || log.claimStatus === selectedStatus;
     return matchesSearch && matchesReason && matchesStatus;
@@ -166,20 +199,30 @@ export const BreakageDamagePanel: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs">
         <div>
           <h3 className="text-sm font-extrabold text-[#0B1F33] flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" /> Breakage, Transit & Yard Wastage Register
+            <AlertTriangle className="w-4 h-4 text-amber-600" /> Breakage, Transit &amp; Yard Wastage Register
           </h3>
           <p className="text-xs text-[#64748B]">
-            Track chipped corners, transit shatter, and supplier insurance claim write-offs
+            Track chipped corners, transit shatter, and supplier insurance claim write-offs in Cloud Firestore
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="sm"
-          icon={Plus}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Log Yard Damage / Breakage
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={RefreshCw}
+            onClick={loadBreakageLogs}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={Plus}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Log Yard Damage / Breakage
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -189,7 +232,7 @@ export const BreakageDamagePanel: React.FC = () => {
           <span className="text-lg font-extrabold text-red-600 font-mono-num mt-0.5 block">
             {totalDamagedBoxes} Boxes
           </span>
-          <span className="text-[10px] text-[#64748B]">Yard & transit wastage</span>
+          <span className="text-[10px] text-[#64748B]">Yard &amp; transit wastage</span>
         </div>
         <div className="p-3.5 rounded-xl bg-white border border-[#E2E8F0]">
           <span className="text-[11px] text-[#64748B] block font-medium">ESTIMATED LOSS VALUE</span>
@@ -227,6 +270,7 @@ export const BreakageDamagePanel: React.FC = () => {
             <option value="loading_drop">Loading Drop</option>
             <option value="corner_chipped">Corner Chipped</option>
             <option value="factory_defect">Factory Defect</option>
+            <option value="handling_crack">Handling Crack</option>
           </Select>
 
           <Select
@@ -248,8 +292,8 @@ export const BreakageDamagePanel: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
-                <th className="py-3 px-3">Log Ref & Date</th>
-                <th className="py-3 px-3">Tile Item & Shade</th>
+                <th className="py-3 px-3">Log Ref &amp; Date</th>
+                <th className="py-3 px-3">Tile Item &amp; Shade</th>
                 <th className="py-3 px-3 text-center">Damaged Qty</th>
                 <th className="py-3 px-3">Reason</th>
                 <th className="py-3 px-3 text-right">Loss Value (₹)</th>
@@ -258,10 +302,18 @@ export const BreakageDamagePanel: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F1F5F9]">
-              {filteredLogs.length === 0 ? (
+              {isLoading ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-[#64748B]">
-                    No breakage records match your filter criteria.
+                    Loading breakage records from Cloud Firestore...
+                  </td>
+                </tr>
+              ) : filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-[#64748B]">
+                    {logs.length === 0
+                      ? 'No breakage records logged yet. Click "Log Yard Damage / Breakage" to record one.'
+                      : 'No breakage records match your filter criteria.'}
                   </td>
                 </tr>
               ) : (
@@ -270,13 +322,13 @@ export const BreakageDamagePanel: React.FC = () => {
                     <td className="py-3 px-3">
                       <span className="font-mono font-bold text-[#0B1F33] block">{log.id}</span>
                       <span className="text-[10px] text-[#64748B]">
-                        {new Date(log.reportedAt).toLocaleDateString()}
+                        {new Date(log.reportedAt).toLocaleDateString('en-IN')}
                       </span>
                     </td>
                     <td className="py-3 px-3">
                       <span className="font-extrabold text-[#0B1F33] block">{log.productName}</span>
                       <span className="text-[10px] font-mono text-[#0D5C63] font-bold">
-                        {log.sku} • {log.shadeLotCode}
+                        {[log.sku, log.shadeLotCode].filter(Boolean).join(' • ') || '—'}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-center">
@@ -293,7 +345,7 @@ export const BreakageDamagePanel: React.FC = () => {
                     </td>
                     <td className="py-3 px-3">
                       <span className="text-xs font-mono font-semibold px-2 py-0.5 bg-[#F1F5F9] rounded text-[#475569]">
-                        {log.godownBay}
+                        {log.godownBay || '—'}
                       </span>
                     </td>
                     <td className="py-3 px-3">
@@ -327,7 +379,7 @@ export const BreakageDamagePanel: React.FC = () => {
             <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" size="sm" onClick={handleAddLog}>
+            <Button variant="primary" size="sm" isLoading={isSaving} onClick={handleAddLog}>
               Submit Damage Report
             </Button>
           </div>
@@ -336,7 +388,7 @@ export const BreakageDamagePanel: React.FC = () => {
         <form onSubmit={handleAddLog} className="space-y-4 text-xs">
           <FormField label="Tile Product / Model" required>
             <TextInput
-              placeholder="e.g. Statuario High Gloss Vitrified Tile"
+              placeholder="Enter product name or model"
               value={newLog.productName}
               onChange={(e) => setNewLog({ ...newLog, productName: e.target.value })}
             />
@@ -345,14 +397,14 @@ export const BreakageDamagePanel: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <FormField label="SKU Code">
               <TextInput
-                placeholder="TIL-VT-6012"
+                placeholder="Enter SKU code"
                 value={newLog.sku}
                 onChange={(e) => setNewLog({ ...newLog, sku: e.target.value })}
               />
             </FormField>
             <FormField label="Shade & Lot Code">
               <TextInput
-                placeholder="Shade S-402 / Lot 12B"
+                placeholder="Enter shade / lot code"
                 value={newLog.shadeLotCode}
                 onChange={(e) => setNewLog({ ...newLog, shadeLotCode: e.target.value })}
               />
@@ -363,7 +415,7 @@ export const BreakageDamagePanel: React.FC = () => {
             <FormField label="Damaged Boxes" required>
               <TextInput
                 type="number"
-                min="1"
+                min="0"
                 value={newLog.damagedBoxes}
                 onChange={(e) => setNewLog({ ...newLog, damagedBoxes: parseInt(e.target.value) || 0 })}
               />
@@ -400,7 +452,7 @@ export const BreakageDamagePanel: React.FC = () => {
 
             <FormField label="Yard / Godown Bay">
               <TextInput
-                placeholder="Yard Bay A-04"
+                placeholder="Enter yard / godown location"
                 value={newLog.godownBay}
                 onChange={(e) => setNewLog({ ...newLog, godownBay: e.target.value })}
               />

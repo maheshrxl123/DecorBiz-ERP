@@ -306,27 +306,9 @@ export const ecommerceService = {
           }
 
           if (qtyNeeded > 0) {
-            // Auto-create an active batch with sufficient stock if inventory batch is missing or low
-            const newBatchId = doc(collection(db, 'organizations', orgId, 'batches')).id;
-            const newBatchRef = doc(db, 'organizations', orgId, 'batches', newBatchId);
-            const autoQty = qtyNeeded + 1000;
-            tx.set(newBatchRef, {
-              id: newBatchId,
-              organizationId: orgId,
-              storeId,
-              productId: item.productId,
-              productName: item.productName,
-              batchNumber: `AUTO-B-${Math.floor(1000 + Math.random() * 9000)}`,
-              quantity: autoQty,
-              reservedQuantity: qtyNeeded,
-              costPrice: item.unitPrice * 0.7,
-              sellingPrice: item.unitPrice,
-              expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-              status: 'active',
-              createdByUid: caller.uid,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            });
+            throw new Error(
+              `Insufficient available stock in Cloud Firestore for "${item.productName}". Short by ${qtyNeeded} unit(s).`
+            );
           }
         }
 

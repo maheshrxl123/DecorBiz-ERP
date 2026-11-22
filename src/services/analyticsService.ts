@@ -112,8 +112,7 @@ export const analyticsService = {
         for (const item of inv.items) {
           const qty = item.quantity || 0;
           const unitPrice = item.unitPrice || 0;
-          // Approximate landed cost: if purchaseCost available use it, else standard ceramic margin (70% of unit price)
-          const landedCostPerUnit = (item as any).purchaseCost || (item as any).landedCost || unitPrice * 0.72;
+          const landedCostPerUnit = (item as any).purchaseCost || (item as any).landedCost || 0;
           cogsTotal += qty * landedCostPerUnit;
 
           const unitLower = (item.unit || '').toLowerCase();
@@ -122,7 +121,7 @@ export const analyticsService = {
           // Tiles calculation
           if (unitLower.includes('box') || nameLower.includes('tile') || nameLower.includes('slab')) {
             totalBoxesSold += qty;
-            const sqFt = (item as any).coverageSqFt || (item as any).coveragePerBoxSqFt ? (item as any).coveragePerBoxSqFt * qty : qty * 15.5;
+            const sqFt = (item as any).coverageSqFt || ((item as any).coveragePerBoxSqFt ? (item as any).coveragePerBoxSqFt * qty : 0);
             totalSqFtSold += sqFt;
           } else if (nameLower.includes('basin') || nameLower.includes('closet') || nameLower.includes('toilet') || nameLower.includes('sanitary')) {
             totalSanitaryPiecesSold += qty;
@@ -181,7 +180,7 @@ export const analyticsService = {
         totalRevenue += lineTotal;
         const nameLower = (item.productName || '').toLowerCase();
         const unitPrice = item.unitPrice || 0;
-        const cost = (item as any).purchaseCost || unitPrice * 0.72;
+        const cost = (item as any).purchaseCost || (item as any).landedCost || 0;
         const lineCogs = (item.quantity || 0) * cost;
 
         let key = 'tiles';
@@ -199,7 +198,7 @@ export const analyticsService = {
         breakdownMap[key].units += (item.quantity || 0);
         breakdownMap[key].cogs += lineCogs;
         if (key === 'tiles') {
-          breakdownMap[key].sqFt += (item as any).coverageSqFt || ((item.quantity || 0) * 15.5);
+          breakdownMap[key].sqFt += (item as any).coverageSqFt || ((item as any).coveragePerBoxSqFt ? (item as any).coveragePerBoxSqFt * (item.quantity || 0) : 0);
         }
       }
     }
@@ -250,16 +249,16 @@ export const analyticsService = {
     for (const inv of invoices) {
       if (!Array.isArray(inv.items)) continue;
       for (const item of inv.items) {
-        const shade = (item as any).shadeNumber || item.batchNumber || item.batchId || 'STD';
+        const shade = (item as any).shadeNumber || item.batchNumber || item.batchId || '—';
         const key = `${item.productId}_${shade}`;
 
         const existing = shadeAggMap.get(key) || {
           productId: item.productId,
-          productName: item.productName || 'Ceramic Tile',
-          brand: item.brand || 'Vetrify',
-          shadeNumber: (item as any).shadeNumber || (item.batchNumber ? `Lot ${item.batchNumber}` : 'Shade 01'),
-          toneCode: (item as any).toneCode || 'T1',
-          caliberCode: (item as any).caliberCode || 'C0',
+          productName: item.productName || '—',
+          brand: item.brand || '—',
+          shadeNumber: (item as any).shadeNumber || (item.batchNumber ? `Lot ${item.batchNumber}` : '—'),
+          toneCode: (item as any).toneCode || '—',
+          caliberCode: (item as any).caliberCode || '—',
           batchNumber: item.batchNumber,
           boxesSold: 0,
           sqFtSold: 0,
@@ -268,7 +267,7 @@ export const analyticsService = {
 
         const qty = item.quantity || 0;
         existing.boxesSold += qty;
-        existing.sqFtSold += (item as any).coverageSqFt || qty * 15.5;
+        existing.sqFtSold += (item as any).coverageSqFt || ((item as any).coveragePerBoxSqFt ? (item as any).coveragePerBoxSqFt * qty : 0);
         existing.revenue += item.total || ((item.taxableAmount || 0) + (item.totalTaxAmount || 0));
 
         shadeAggMap.set(key, existing);
@@ -276,11 +275,17 @@ export const analyticsService = {
     }
 
     const results: ShadeVelocityItem[] = [];
+    const nowMs = Date.now();
 
     shadeAggMap.forEach((val) => {
-      // Find matching batch for stock level
+      // Find matching batch for real stock level & age
       const matchingBatch = batches.find((b) => b.productId === val.productId && (b.batchNumber === val.batchNumber || b.shadeNumber === val.shadeNumber));
-      const currentStockBoxes = matchingBatch ? matchingBatch.availableQuantity || 0 : 45;
+      const currentStockBoxes = matchingBatch ? matchingBatch.availableQuantity || 0 : 0;
+
+      const createdAtMs =
+        matchingBatch?.createdAt?.toMillis?.() ||
+        (matchingBatch?.createdAt ? new Date(matchingBatch.createdAt).getTime() : 0);
+      const daysInStock = createdAtMs > 0 ? Math.max(0, Math.floor((nowMs - createdAtMs) / 86400000)) : 0;
 
       let velocity: 'FAST' | 'STEADY' | 'SLOW' | 'NON_MOVING' = 'STEADY';
       if (val.boxesSold >= 50) velocity = 'FAST';
@@ -292,7 +297,7 @@ export const analyticsService = {
         ...val,
         currentStockBoxes,
         velocity,
-        daysInStock: Math.floor(Math.random() * 20) + 10,
+        daysInStock,
       });
     });
 
@@ -300,32 +305,33 @@ export const analyticsService = {
   },
 
   /**
-   * Architect & Interior Designer Attribution Report
+   * Architect & Interior Designer Attribution Report (Cloud Firestore backed)
    */
   async getArchitectReport(organizationId: string): Promise<ArchitectAttribution[]> {
-    // Read stored partners from local cache & invoices
-    let partners: any[] = [];
+    if (!organizationId) return [];
     try {
-      partners = JSON.parse(localStorage.getItem('vetrify_architect_partners') || '[]');
-    } catch {}
-
-    if (partners.length === 0) {
-      // Default initial partner registry structure (derived from actual activity or active partners)
+      const snap = await getDocs(collection(db, 'organizations', organizationId, 'architectPartners'));
+      return snap.docs.map((d) => {
+        const p = d.data() as Record<string, any>;
+        const accrued = Number(p.totalCommissionAccrued) || 0;
+        const paid = Number(p.totalCommissionPaid) || 0;
+        return {
+          partnerId: d.id,
+          partnerName: p.name || '—',
+          phone: p.phone || '',
+          firmName: p.firmName || '',
+          defaultCommissionPercent: Number(p.defaultCommissionPercent) || 0,
+          totalInvoicesCount: Number(p.totalInvoicesCount) || 0,
+          totalBusinessDriven: Number(p.totalBusinessDriven) || 0,
+          totalCommissionAccrued: accrued,
+          totalCommissionPaid: paid,
+          pendingBalance: Math.max(0, accrued - paid),
+        };
+      });
+    } catch (err) {
+      console.warn('Failed to fetch architect partners from Firestore:', err);
       return [];
     }
-
-    return partners.map((p: any) => ({
-      partnerId: p.id,
-      partnerName: p.name || 'Architect Partner',
-      phone: p.phone || '',
-      firmName: p.firmName || 'Design Studio',
-      defaultCommissionPercent: p.defaultCommissionPercent || 5,
-      totalInvoicesCount: p.totalInvoicesCount || (p.totalBusinessDriven > 0 ? 3 : 0),
-      totalBusinessDriven: p.totalBusinessDriven || 0,
-      totalCommissionAccrued: p.totalCommissionAccrued || 0,
-      totalCommissionPaid: p.totalCommissionPaid || 0,
-      pendingBalance: Math.max(0, (p.totalCommissionAccrued || 0) - (p.totalCommissionPaid || 0)),
-    }));
   },
 
   /**

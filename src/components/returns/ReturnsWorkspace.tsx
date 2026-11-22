@@ -396,6 +396,20 @@ export function ReturnsWorkspace() {
           isOpen={!!selectedCreditNote}
           onClose={() => setSelectedCreditNote(null)}
           creditNote={selectedCreditNote}
+          storeName={currentStore?.name || currentOrganization?.name || ''}
+          storeGstin={currentStore?.gstin || currentOrganization?.gstin || ''}
+          storeAddress={
+            currentStore?.address
+              ? [
+                  currentStore.address.street,
+                  currentStore.address.city,
+                  currentStore.address.state,
+                  currentStore.address.postalCode,
+                ]
+                  .filter(Boolean)
+                  .join(', ')
+              : ''
+          }
         />
       )}
     </div>

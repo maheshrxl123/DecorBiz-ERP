@@ -22,26 +22,7 @@ export interface MediaService {
 export const defaultMediaService: MediaService = {
   async uploadMedia(options: MediaUploadOptions): Promise<MediaUploadResult> {
     if (!options.userToken) {
-      // Local preview fallback if token not supplied yet
-      const localUrl = URL.createObjectURL(options.file);
-      return {
-        success: true,
-        asset: {
-          id: `media-${Date.now()}`,
-          organizationId: options.organizationId,
-          storeId: options.storeId || null,
-          ownerUid: options.uploadedByUid,
-          category: options.category,
-          provider: 'mock',
-          resourceType: options.file.type === 'application/pdf' ? 'raw' : 'image',
-          publicId: `preview-${Date.now()}`,
-          secureUrl: localUrl,
-          bytes: options.file.size,
-          originalFilename: options.file.name,
-          folder: `vetrify/organizations/${options.organizationId}/preview`,
-          createdAt: new Date().toISOString(),
-        },
-      };
+      throw new Error('Authentication token is required to upload media to ImageKit.');
     }
 
     return mediaService.uploadAsset({
@@ -55,7 +36,9 @@ export const defaultMediaService: MediaService = {
   },
 
   async deleteMedia(assetId: string, organizationId: string, userToken?: string): Promise<boolean> {
-    if (!userToken) return true;
+    if (!userToken) {
+      throw new Error('Authentication token is required to delete media from ImageKit.');
+    }
     return mediaService.deleteMediaAsset(organizationId, assetId, userToken);
   },
 

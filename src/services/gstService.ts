@@ -113,6 +113,7 @@ export const gstService = {
       igst = (taxableValue * gstRate) / 100;
     } else {
       cgst = (taxableValue * (gstRate / 2)) / 100;
+      sgst = (taxableValue * (gstRate / 2)) / 100;
     }
     
     const totalTax = cgst + sgst + igst;

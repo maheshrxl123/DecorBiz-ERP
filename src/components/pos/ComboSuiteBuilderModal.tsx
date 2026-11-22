@@ -2,428 +2,154 @@ import React, { useState, useMemo } from 'react';
 import {
   X,
   Sparkles,
-  Bath,
-  Home,
-  CheckCircle2,
-  Plus,
-  Percent,
-  Layers,
-  ArrowRight,
-  Package,
-  Wrench,
-  ChevronRight,
   Check,
+  Percent,
+  ShoppingCart,
+  Package,
 } from 'lucide-react';
-import { PosCartItem } from '../../types';
+import { PosCartItem, PosProductItem } from '../../types';
 import { safeToFixed } from '../../lib/formatting/formatters';
 
 interface ComboSuiteBuilderModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddSuiteToCart: (items: PosCartItem[]) => void;
+  availableProducts: PosProductItem[];
 }
-
-interface SuitePreset {
-  id: string;
-  title: string;
-  tagline: string;
-  category: 'bathroom' | 'living' | 'kitchen';
-  defaultAreaSqFt: number;
-  discountPercent: number;
-  components: {
-    categoryLabel: string;
-    productName: string;
-    brand: string;
-    finish: string;
-    size: string;
-    unitPrice: number;
-    unit: string;
-    coveragePerBoxSqFt?: number;
-    calcQtyRatio: (areaSqFt: number) => number; // e.g. how many boxes or pcs per sq.ft
-    isOptional?: boolean;
-    defaultSelected?: boolean;
-    hsnCode: string;
-    gstPercent: number;
-  }[];
-}
-
-const SUITE_PRESETS: SuitePreset[] = [
-  {
-    id: 'master-bath-luxury',
-    title: 'Master Bathroom Luxury Suite',
-    tagline: 'GVT 600×1200mm Wall Tiles, Anti-skid Floor, Rimless Wall-hung WC, Vanity & Diverter',
-    category: 'bathroom',
-    defaultAreaSqFt: 220,
-    discountPercent: 12,
-    components: [
-      {
-        categoryLabel: 'Wall Tiles (Light Shade)',
-        productName: 'Kajaria Royal Calacatta Statuario Glossy (600×1200mm)',
-        brand: 'Kajaria',
-        finish: 'Glossy',
-        size: '600×1200mm',
-        unitPrice: 1250,
-        unit: 'Box',
-        coveragePerBoxSqFt: 15.5,
-        calcQtyRatio: (area) => Math.ceil((area * 0.65) / 15.5),
-        hsnCode: '6907',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Wall Tiles (Dark Highlighter)',
-        productName: 'Kajaria Nero Marquina Carving Finish (600×1200mm)',
-        brand: 'Kajaria',
-        finish: 'Carving',
-        size: '600×1200mm',
-        unitPrice: 1380,
-        unit: 'Box',
-        coveragePerBoxSqFt: 15.5,
-        calcQtyRatio: (area) => Math.ceil((area * 0.25) / 15.5),
-        hsnCode: '6907',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Floor Tiles (Anti-Skid)',
-        productName: 'Somany Anti-Skid Gris Matt Punch (600×600mm)',
-        brand: 'Somany',
-        finish: 'Matt',
-        size: '600×600mm',
-        unitPrice: 780,
-        unit: 'Box',
-        coveragePerBoxSqFt: 15.5,
-        calcQtyRatio: (area) => Math.ceil((area * 0.2) / 15.5),
-        hsnCode: '6907',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Tile Adhesive (Polymer Mod.)',
-        productName: 'Roff T02 Grey Tile Adhesive (20 Kg Bag)',
-        brand: 'Pidilite Roff',
-        finish: 'Grey',
-        size: '20 Kg',
-        unitPrice: 420,
-        unit: 'Bag',
-        calcQtyRatio: (area) => Math.max(2, Math.ceil(area / 50)),
-        hsnCode: '3506',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Epoxy Grout (Stain Proof)',
-        productName: 'Laticrete Spectralock Pro Epoxy Grout (1 Kg Kit)',
-        brand: 'Laticrete',
-        finish: 'Silver Shadow',
-        size: '1 Kg',
-        unitPrice: 650,
-        unit: 'Kit',
-        calcQtyRatio: (area) => Math.max(1, Math.ceil(area / 90)),
-        hsnCode: '3214',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Sanitaryware (WC Suite)',
-        productName: 'Jaquar Rimless Wall-hung Commode with UF Soft Close Seat',
-        brand: 'Jaquar',
-        finish: 'Alpine White',
-        size: '540×360mm',
-        unitPrice: 8490,
-        unit: 'Piece',
-        calcQtyRatio: () => 1,
-        hsnCode: '6910',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Basin & Vanity',
-        productName: 'Hindware Italian Collection Tabletop Art Ceramic Basin',
-        brand: 'Hindware',
-        finish: 'Gloss White',
-        size: '480×370mm',
-        unitPrice: 3850,
-        unit: 'Piece',
-        calcQtyRatio: () => 1,
-        hsnCode: '6910',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'CP Faucets & Shower',
-        productName: 'Jaquar Alive Single Lever Concealed Diverter & Overhead Shower',
-        brand: 'Jaquar',
-        finish: 'Chrome',
-        size: 'Standard',
-        unitPrice: 6990,
-        unit: 'Set',
-        calcQtyRatio: () => 1,
-        isOptional: true,
-        defaultSelected: true,
-        hsnCode: '8481',
-        gstPercent: 18,
-      },
-    ],
-  },
-  {
-    id: 'living-hall-package',
-    title: 'Living & Dining Vitrified Flooring Package',
-    tagline: 'Large Format 800×1600mm Porcelain Slabs with Heavy Duty Adhesive & Levellers',
-    category: 'living',
-    defaultAreaSqFt: 450,
-    discountPercent: 10,
-    components: [
-      {
-        categoryLabel: 'Main Hall Floor Slabs',
-        productName: 'Simpolo Armani Brown Polished Vitrified Slab (800×1600mm)',
-        brand: 'Simpolo',
-        finish: 'High Gloss',
-        size: '800×1600mm',
-        unitPrice: 2450,
-        unit: 'Box',
-        coveragePerBoxSqFt: 27.56,
-        calcQtyRatio: (area) => Math.ceil((area * 1.08) / 27.56), // +8% wastage
-        hsnCode: '6907',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Border / Skirting Strip',
-        productName: 'Simpolo Nero High Density Border Tile (600×150mm)',
-        brand: 'Simpolo',
-        finish: 'Polished',
-        size: '600×150mm',
-        unitPrice: 580,
-        unit: 'Box',
-        coveragePerBoxSqFt: 10.0,
-        calcQtyRatio: (area) => Math.max(2, Math.ceil(area / 150)),
-        hsnCode: '6907',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Heavy Duty Adhesive (Type 2)',
-        productName: 'MYK Laticrete 335 Super Flexible Adhesive (20 Kg)',
-        brand: 'MYK Laticrete',
-        finish: 'White',
-        size: '20 Kg',
-        unitPrice: 720,
-        unit: 'Bag',
-        calcQtyRatio: (area) => Math.ceil(area / 45),
-        hsnCode: '3506',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Tile Levelling System',
-        productName: 'ProLevel Reusable Spin-Cap Tile Levelling Spacers (Pack of 100)',
-        brand: 'ProTools',
-        finish: '2mm',
-        size: '100 pcs',
-        unitPrice: 480,
-        unit: 'Pack',
-        calcQtyRatio: (area) => Math.max(2, Math.ceil(area / 200)),
-        isOptional: true,
-        defaultSelected: true,
-        hsnCode: '3926',
-        gstPercent: 18,
-      },
-    ],
-  },
-  {
-    id: 'compact-bath-standard',
-    title: 'Guest Washroom Compact Combo',
-    tagline: '300×600mm Ceramic Wall Tiles, Floor, One-Piece EWC Commode & Basin',
-    category: 'bathroom',
-    defaultAreaSqFt: 120,
-    discountPercent: 8,
-    components: [
-      {
-        categoryLabel: 'Wall Tiles (Light)',
-        productName: 'Cera Travertino Crema Gloss Ceramic (300×600mm)',
-        brand: 'Cera',
-        finish: 'Glossy',
-        size: '300×600mm',
-        unitPrice: 560,
-        unit: 'Box',
-        coveragePerBoxSqFt: 11.62,
-        calcQtyRatio: (area) => Math.ceil((area * 0.7) / 11.62),
-        hsnCode: '6907',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Wall Tiles (Highlighter)',
-        productName: 'Cera Moroccan Motif Decor Ceramic (300×600mm)',
-        brand: 'Cera',
-        finish: 'Glossy',
-        size: '300×600mm',
-        unitPrice: 620,
-        unit: 'Box',
-        coveragePerBoxSqFt: 11.62,
-        calcQtyRatio: (area) => Math.ceil((area * 0.2) / 11.62),
-        hsnCode: '6907',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Floor Tiles (Anti-skid)',
-        productName: 'Cera Ivory Anti-Skid Floor Tile (300×300mm)',
-        brand: 'Cera',
-        finish: 'Matt',
-        size: '300×300mm',
-        unitPrice: 420,
-        unit: 'Box',
-        coveragePerBoxSqFt: 9.68,
-        calcQtyRatio: (area) => Math.ceil((area * 0.25) / 9.68),
-        hsnCode: '6907',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Tile Adhesive',
-        productName: 'Roff New Construction Tile Adhesive (20 Kg)',
-        brand: 'Pidilite Roff',
-        finish: 'Grey',
-        size: '20 Kg',
-        unitPrice: 340,
-        unit: 'Bag',
-        calcQtyRatio: (area) => Math.max(1, Math.ceil(area / 60)),
-        hsnCode: '3506',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'One-Piece EWC Toilet',
-        productName: 'Cera Belis One-Piece S-Trap Ceramic Water Closet',
-        brand: 'Cera',
-        finish: 'White',
-        size: '650×360mm',
-        unitPrice: 4990,
-        unit: 'Piece',
-        calcQtyRatio: () => 1,
-        hsnCode: '6910',
-        gstPercent: 18,
-      },
-      {
-        categoryLabel: 'Wall Hung Basin',
-        productName: 'Cera Mini Wall Hung Wash Basin with Bottle Trap',
-        brand: 'Cera',
-        finish: 'White',
-        size: '420×300mm',
-        unitPrice: 1250,
-        unit: 'Piece',
-        calcQtyRatio: () => 1,
-        hsnCode: '6910',
-        gstPercent: 18,
-      },
-    ],
-  },
-];
 
 export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
   isOpen,
   onClose,
   onAddSuiteToCart,
+  availableProducts,
 }) => {
-  const [selectedPresetId, setSelectedPresetId] = useState<string>(SUITE_PRESETS[0].id);
-  const [roomAreaSqFt, setRoomAreaSqFt] = useState<number>(SUITE_PRESETS[0].defaultAreaSqFt);
+  const [roomAreaSqFt, setRoomAreaSqFt] = useState<number>(120);
   const [roomLengthFt, setRoomLengthFt] = useState<string>('12');
   const [roomWidthFt, setRoomWidthFt] = useState<string>('10');
   const [dimensionMode, setDimensionMode] = useState<'area' | 'dimensions'>('dimensions');
-  const [disabledComponents, setDisabledComponents] = useState<Record<string, boolean>>({});
-
-  const activePreset = useMemo(() => {
-    return SUITE_PRESETS.find((p) => p.id === selectedPresetId) || SUITE_PRESETS[0];
-  }, [selectedPresetId]);
+  const [bundleDiscountPercent, setBundleDiscountPercent] = useState<number>(0);
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const [customQtys, setCustomQtys] = useState<Record<string, number>>({});
 
   // Compute effective area
   const effectiveArea = useMemo(() => {
     if (dimensionMode === 'dimensions') {
       const l = parseFloat(roomLengthFt) || 0;
       const w = parseFloat(roomWidthFt) || 0;
-      const wallPerimeter = (l + w) * 2;
-      const wallHeight = 8; // standard 8 ft height for bathroom tiling
-      // If bathroom, calculate total wall + floor area
-      if (activePreset.category === 'bathroom') {
-        return Math.round(wallPerimeter * wallHeight + l * w);
-      }
       return Math.round(l * w);
     }
     return roomAreaSqFt;
-  }, [dimensionMode, roomLengthFt, roomWidthFt, roomAreaSqFt, activePreset.category]);
+  }, [dimensionMode, roomLengthFt, roomWidthFt, roomAreaSqFt]);
 
-  // Compute component quantities and costs
-  const evaluatedComponents = useMemo(() => {
-    return activePreset.components.map((c, index) => {
-      const isExcluded = disabledComponents[`${activePreset.id}_${index}`];
-      const qty = c.calcQtyRatio(effectiveArea);
-      const gross = qty * c.unitPrice;
-      const discount = (gross * activePreset.discountPercent) / 100;
+  const inStockProducts = useMemo(() => {
+    return availableProducts.filter((p) => p.hasBatches && p.stock > 0);
+  }, [availableProducts]);
+
+  const getSuggestedQty = (prod: PosProductItem): number => {
+    if (customQtys[prod.id] !== undefined) {
+      return customQtys[prod.id];
+    }
+    const coverage = prod.coveragePerBoxSqFt || 0;
+    if (coverage > 0 && effectiveArea > 0) {
+      // Include 10% wastage buffer for tile box calculation
+      return Math.min(
+        prod.stock,
+        Math.max(1, Math.ceil((effectiveArea * 1.1) / coverage))
+      );
+    }
+    return 1;
+  };
+
+  const evaluatedProducts = useMemo(() => {
+    return inStockProducts.map((prod) => {
+      const isSelected = Boolean(selectedIds[prod.id]);
+      const qty = Math.min(prod.stock, Math.max(1, getSuggestedQty(prod)));
+      const unitPrice = prod.price || prod.mrp || 0;
+      const gross = qty * unitPrice;
+      const discount = (gross * bundleDiscountPercent) / 100;
       const net = gross - discount;
       return {
-        ...c,
-        index,
-        isExcluded: Boolean(isExcluded),
+        product: prod,
+        isSelected,
         qty,
+        unitPrice,
         gross,
         discount,
         net,
       };
     });
-  }, [activePreset, effectiveArea, disabledComponents]);
+  }, [inStockProducts, selectedIds, customQtys, effectiveArea, bundleDiscountPercent]);
 
   const summary = useMemo(() => {
-    const included = evaluatedComponents.filter((c) => !c.isExcluded);
+    const included = evaluatedProducts.filter((e) => e.isSelected);
     const grossTotal = included.reduce((s, c) => s + c.gross, 0);
     const totalDiscount = included.reduce((s, c) => s + c.discount, 0);
     const netTotal = included.reduce((s, c) => s + c.net, 0);
     const totalItems = included.reduce((s, c) => s + c.qty, 0);
-    return { grossTotal, totalDiscount, netTotal, totalItems };
-  }, [evaluatedComponents]);
+    return { count: included.length, grossTotal, totalDiscount, netTotal, totalItems };
+  }, [evaluatedProducts]);
 
-  const toggleComponent = (index: number) => {
-    const key = `${activePreset.id}_${index}`;
-    setDisabledComponents((prev) => ({
+  const toggleProduct = (productId: string) => {
+    setSelectedIds((prev) => ({
       ...prev,
-      [key]: !prev[key],
+      [productId]: !prev[productId],
     }));
   };
 
   const handleApplySuite = () => {
-    const included = evaluatedComponents.filter((c) => !c.isExcluded);
-    const cartItems: PosCartItem[] = included.map((c) => {
-      const base = c.qty * c.unitPrice;
-      const discAmt = (base * activePreset.discountPercent) / 100;
+    const included = evaluatedProducts.filter((e) => e.isSelected && e.product.hasBatches);
+    if (included.length === 0) return;
+
+    const cartItems: PosCartItem[] = included.map((entry) => {
+      const p = entry.product;
+      const base = entry.qty * entry.unitPrice;
+      const discAmt = (base * bundleDiscountPercent) / 100;
       const taxable = base - discAmt;
-      const halfGst = c.gstPercent / 2;
+      const gstPercent = p.gstPercent ?? p.gst ?? 0;
+      const halfGst = gstPercent / 2;
       const cgst = (taxable * halfGst) / 100;
       const sgst = (taxable * halfGst) / 100;
       const total = taxable + cgst + sgst;
 
       return {
-        id: `suite_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        productId: `prod_suite_${c.index}`,
-        name: c.productName,
-        brand: c.brand,
-        composition: `${activePreset.title} Bundle Component`,
-        sku: `SUITE-${c.brand.slice(0, 3).toUpperCase()}-${c.unit.slice(0, 2).toUpperCase()}`,
-        batchId: `batch_suite_${c.index}`,
-        batch: 'SUITE-LOT-01',
-        shadeNumber: 'SUITE-SHADE-A',
-        toneCode: 'T01',
-        caliberCode: 'CAL-0',
-        finish: c.finish,
-        grade: 'Premium',
-        expiry: 'N/A',
-        qty: c.qty,
-        availableStock: 999,
-        unit: c.unit,
-        mrp: c.unitPrice * 1.15,
-        price: c.unitPrice,
-        discountPercent: activePreset.discountPercent,
+        id: `suite_${p.id}_${Date.now()}`,
+        productId: p.id,
+        name: p.name,
+        brand: p.brand || '',
+        composition: p.composition || '',
+        sku: p.sku,
+        batchId: p.batchId,
+        batch: p.batch || '',
+        shadeNumber: p.shadeNumber,
+        toneCode: p.toneCode,
+        caliberCode: p.caliberCode,
+        finish: p.finish || p.dosageForm,
+        grade: p.grade,
+        dimensionsMm: p.dimensionsMm,
+        expiry: p.expiry || 'N/A',
+        qty: entry.qty,
+        availableStock: p.stock,
+        unit: p.unit || 'Box',
+        mrp: p.mrp || entry.unitPrice,
+        price: entry.unitPrice,
+        discountPercent: bundleDiscountPercent,
         discountAmount: discAmt,
         taxableAmount: taxable,
-        gstPercent: c.gstPercent,
+        gstPercent,
         cgstAmount: cgst,
         sgstAmount: sgst,
         totalTax: cgst + sgst,
-        total: total,
-        dosageForm: c.finish,
-        hsnCode: c.hsnCode,
-        coveragePerBoxSqFt: c.coveragePerBoxSqFt,
-        sqFtCalculated: c.coveragePerBoxSqFt ? c.qty * c.coveragePerBoxSqFt : undefined,
+        total,
+        dosageForm: p.finish || p.dosageForm,
+        hsnCode: p.hsnCode,
+        coveragePerBoxSqFt: p.coveragePerBoxSqFt,
+        sqFtCalculated: p.coveragePerBoxSqFt ? entry.qty * p.coveragePerBoxSqFt : undefined,
       };
     });
 
     onAddSuiteToCart(cartItems);
+    setSelectedIds({});
+    setCustomQtys({});
     onClose();
   };
 
@@ -440,13 +166,10 @@ export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-black uppercase tracking-wider flex items-center gap-2">
-                Ceramic Suite &amp; Room Combo Package Builder
-                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black">
-                  PRO POS
-                </span>
+                Room Combo &amp; Suite Package Builder
               </h2>
               <p className="text-xs text-teal-100 mt-0.5">
-                Auto-bundles Wall Tiles, Floor, Adhesive, Epoxy Grout &amp; Fixtures with Package Discounts
+                Bundle real showroom products from Cloud Firestore inventory with room-area box estimates
               </p>
             </div>
           </div>
@@ -454,54 +177,24 @@ export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+            className="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Preset Selection Strip */}
-        <div className="px-6 py-3 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex gap-2 overflow-x-auto">
-          {SUITE_PRESETS.map((p) => {
-            const isSelected = p.id === selectedPresetId;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  setSelectedPresetId(p.id);
-                  setRoomAreaSqFt(p.defaultAreaSqFt);
-                  setDisabledComponents({});
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-                  isSelected
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                {p.category === 'bathroom' ? <Bath className="w-4 h-4" /> : <Home className="w-4 h-4" />}
-                <span>{p.title}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20' : 'bg-teal-100 text-teal-800'}`}>
-                  {p.discountPercent}% OFF
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Dimensions & Presets Config (4 cols) */}
+          {/* Left Column: Dimensions & Summary (4 cols) */}
           <div className="lg:col-span-4 space-y-4">
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
               <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center justify-between">
                 <span>Room Dimensions &amp; Area</span>
                 <span className="text-[10px] text-teal-600 font-mono font-bold">
-                  Effective: {effectiveArea} Sq. Ft
+                  Area: {effectiveArea} Sq. Ft
                 </span>
               </h3>
 
-              {/* Mode Toggle */}
               <div className="grid grid-cols-2 gap-1 bg-slate-200 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
                 <button
                   type="button"
@@ -512,7 +205,7 @@ export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
                       : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  Room L × W (Feet)
+                  Room L × W (Ft)
                 </button>
                 <button
                   type="button"
@@ -523,7 +216,7 @@ export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
                       : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  Total Sq. Ft Area
+                  Total Sq. Ft
                 </button>
               </div>
 
@@ -557,11 +250,11 @@ export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
               ) : (
                 <div className="pt-1">
                   <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                    Total Net Carpet Area (Sq. Ft)
+                    Total Net Area (Sq. Ft)
                   </label>
                   <input
                     type="number"
-                    min="10"
+                    min="1"
                     value={roomAreaSqFt}
                     onChange={(e) => setRoomAreaSqFt(Number(e.target.value) || 0)}
                     className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono"
@@ -569,10 +262,22 @@ export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
                 </div>
               )}
 
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Bundle Discount (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={bundleDiscountPercent}
+                  onChange={(e) => setBundleDiscountPercent(Math.min(50, Math.max(0, Number(e.target.value) || 0)))}
+                  className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono"
+                />
+              </div>
+
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                {activePreset.category === 'bathroom'
-                  ? 'Tile requirement automatically includes 4-wall perimeter tiling up to 8 ft height plus anti-skid floor area.'
-                  : 'Tile requirement includes an integrated 8% cutting and breakage buffer.'}
+                For products with box coverage set in Firestore, suggested quantities automatically add a 10% wastage buffer.
               </p>
             </div>
 
@@ -580,23 +285,25 @@ export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
             <div className="p-4 bg-teal-50 dark:bg-teal-950/30 rounded-2xl border border-teal-200 dark:border-teal-800 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Total Items Included
+                  Selected Line Items
                 </span>
                 <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
-                  {summary.totalItems} units / boxes
+                  {summary.count} SKUs ({summary.totalItems} units)
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-                <span>Standard Catalog Price:</span>
+                <span>Catalog Subtotal:</span>
                 <span className="font-mono">₹{safeToFixed(summary.grossTotal)}</span>
               </div>
-              <div className="flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
-                <span className="flex items-center gap-1">
-                  <Percent className="w-3.5 h-3.5" />
-                  Suite Combo Discount ({activePreset.discountPercent}%):
-                </span>
-                <span className="font-mono">-₹{safeToFixed(summary.totalDiscount)}</span>
-              </div>
+              {bundleDiscountPercent > 0 && (
+                <div className="flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                  <span className="flex items-center gap-1">
+                    <Percent className="w-3.5 h-3.5" />
+                    Bundle Discount ({bundleDiscountPercent}%):
+                  </span>
+                  <span className="font-mono">-₹{safeToFixed(summary.totalDiscount)}</span>
+                </div>
+              )}
               <div className="pt-2 border-t border-teal-200 dark:border-teal-800 flex items-center justify-between">
                 <span className="text-sm font-black text-slate-900 dark:text-white uppercase">
                   Net Suite Price:
@@ -608,98 +315,115 @@ export const ComboSuiteBuilderModal: React.FC<ComboSuiteBuilderModalProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Interactive Components Breakdown (8 cols) */}
+          {/* Right Column: Live Firestore Inventory Selection (8 cols) */}
           <div className="lg:col-span-8 space-y-3">
             <div className="flex items-center justify-between pb-1">
               <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                Suite Components Breakdown ({evaluatedComponents.filter((c) => !c.isExcluded).length}/{evaluatedComponents.length} Selected)
+                Available Showroom Stock ({summary.count}/{inStockProducts.length} Selected)
               </h3>
-              <span className="text-[11px] text-slate-500">Uncheck to omit individual fittings</span>
+              <span className="text-[11px] text-slate-500">Select items from your live Firestore catalog</span>
             </div>
 
-            <div className="space-y-2 overflow-y-auto max-h-[380px] pr-1">
-              {evaluatedComponents.map((c) => {
-                return (
-                  <div
-                    key={c.index}
-                    onClick={() => toggleComponent(c.index)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                      c.isExcluded
-                        ? 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 opacity-50'
-                        : 'border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-800/70 shadow-xs hover:border-teal-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors ${
-                          !c.isExcluded
-                            ? 'bg-teal-600 border-teal-600 text-white'
-                            : 'border-slate-300 dark:border-slate-600'
-                        }`}
-                      >
-                        {!c.isExcluded && <Check className="w-3.5 h-3.5" />}
+            {inStockProducts.length === 0 ? (
+              <div className="p-10 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <Package className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  No in-stock products available in Cloud Firestore
+                </p>
+                <p className="text-xs text-slate-500">
+                  Add products and inward stock batches in Inventory before building room combo packages.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 overflow-y-auto max-h-[380px] pr-1">
+                {evaluatedProducts.map((entry) => {
+                  const p = entry.product;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => toggleProduct(p.id)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        entry.isSelected
+                          ? 'border-teal-400 dark:border-teal-700 bg-white dark:bg-slate-800/70 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/30 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
+                            entry.isSelected
+                              ? 'bg-teal-600 border-teal-600 text-white'
+                              : 'border-slate-300 dark:border-slate-600'
+                          }`}
+                        >
+                          {entry.isSelected && <Check className="w-3.5 h-3.5" />}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
+                              {p.brand || 'Catalog'}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400">
+                              SKU: {p.sku} · Stock: {p.stock}
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5 truncate">
+                            {p.name}
+                          </h4>
+                          <p className="text-[10px] text-slate-500">
+                            ₹{safeToFixed(entry.unitPrice)} / {p.unit || 'Unit'}
+                            {p.coveragePerBoxSqFt ? ` · ${p.coveragePerBoxSqFt} Sq.Ft/Box` : ''}
+                          </p>
+                        </div>
                       </div>
 
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
-                            {c.categoryLabel}
-                          </span>
-                          <span className="text-[10px] text-slate-400">• {c.size}</span>
-                        </div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
-                          {c.productName}
-                        </h4>
-                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                          ₹{c.unitPrice} / {c.unit} {c.coveragePerBoxSqFt ? `(${c.coveragePerBoxSqFt} sq.ft/bx)` : ''}
+                      <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="number"
+                          min={1}
+                          max={p.stock}
+                          value={entry.qty}
+                          onChange={(e) =>
+                            setCustomQtys((prev) => ({
+                              ...prev,
+                              [p.id]: Math.min(p.stock, Math.max(1, parseInt(e.target.value) || 1)),
+                            }))
+                          }
+                          className="w-16 px-2 py-1 text-center text-xs font-mono font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg"
+                        />
+                        <div className="text-right w-24">
+                          <div className="text-xs font-black font-mono text-slate-900 dark:text-white">
+                            ₹{safeToFixed(entry.net)}
+                          </div>
                         </div>
                       </div>
                     </div>
-
-                    <div className="text-right">
-                      <div className="text-xs font-black text-slate-900 dark:text-white font-mono">
-                        {c.qty} {c.unit}s
-                      </div>
-                      <div className="text-[11px] text-teal-600 dark:text-teal-400 font-mono font-bold">
-                        ₹{safeToFixed(c.net)}
-                      </div>
-                      {c.discount > 0 && (
-                        <div className="text-[9px] text-emerald-600 line-through">
-                          ₹{safeToFixed(c.gross)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Modal Action Footer */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="text-xs text-slate-500">
-            Selected Suite will be loaded into active bill cart as individual items with pre-applied combo discount.
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleApplySuite}
-              disabled={summary.totalItems === 0}
-              className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-teal-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Suite to POS Cart (₹{safeToFixed(summary.netTotal)})</span>
-            </button>
-          </div>
+        {/* Footer */}
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={summary.count === 0}
+            onClick={handleApplySuite}
+            className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span>Add {summary.count} Item{summary.count === 1 ? '' : 's'} to POS Bill</span>
+          </button>
         </div>
       </div>
     </div>

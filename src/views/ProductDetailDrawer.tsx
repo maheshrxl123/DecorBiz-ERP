@@ -1,25 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Grid,
   ShieldCheck,
-  Package,
-  Calendar,
-  Building,
-  Tag,
-  Barcode,
-  Layers,
-  History,
-  TrendingUp,
-  AlertTriangle,
   Edit,
-  FileSpreadsheet,
   Archive,
   Trash2,
-  Box,
-  Warehouse,
-  Droplet,
-  Wrench,
-  Pipette,
 } from 'lucide-react';
 import { Drawer } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
@@ -28,7 +12,9 @@ import { ProductImage } from '../components/ui/ProductImage';
 import { Tabs } from '../components/ui/Tabs';
 import { Product } from '../types/product';
 import { InventoryItem } from '../types';
+import { TileLotBatch } from '../types/batch';
 import { setProductStatus, deleteProduct } from '../services/productService';
+import { batchService } from '../services/batchService';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../auth/AuthProvider';
 import { useToast } from '../context/ToastContext';
@@ -58,26 +44,60 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'batches' | 'pricing' | 'history'>('overview');
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [batches, setBatches] = useState<TileLotBatch[]>([]);
+  const [isLoadingBatches, setIsLoadingBatches] = useState(false);
+
+  const productId = (product as any)?.id as string | undefined;
+
+  useEffect(() => {
+    let active = true;
+    if (!isOpen || !organization?.id || !productId) {
+      setBatches([]);
+      return;
+    }
+
+    const fetchProductBatches = async () => {
+      setIsLoadingBatches(true);
+      try {
+        const res = await batchService.getBatches(organization.id, { productId });
+        if (active) {
+          setBatches(res.batches || []);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch batches for product:', err);
+        if (active) setBatches([]);
+      } finally {
+        if (active) setIsLoadingBatches(false);
+      }
+    };
+
+    fetchProductBatches();
+    return () => {
+      active = false;
+    };
+  }, [isOpen, organization?.id, productId]);
 
   if (!product) return null;
 
-  // Normalize fields between Product and InventoryItem
+  // Normalize fields strictly from Firestore document (no fabricated defaults)
   const p = product as any;
-  const productName = p.productName || p.name;
-  const brand = p.brand || 'Generic Brand';
-  const sku = p.sku || 'SKU-001';
-  const categoryType = p.categoryType || 'tiles';
-  const manufacturer = p.manufacturerName || p.manufacturer || brand;
-  const category = p.categoryName || p.category || 'General';
-  const hsnCode = p.hsnCode || '6907';
-  const gstRate = p.gstRate || 18;
+  const productName = p.productName || p.name || 'Unnamed Product';
+  const brand = p.brand || '—';
+  const sku = p.sku || '—';
+  const categoryType = p.categoryType || 'other';
+  const category = p.categoryName || p.category || '—';
+  const hsnCode = p.hsnCode || '—';
+  const gstRate = typeof p.gstRate === 'number' ? p.gstRate : 0;
   const mrp = p.defaultMrp ?? p.mrp ?? 0;
   const purchaseCost = p.defaultPurchaseCost ?? p.purchaseCost ?? 0;
   const salePrice = p.defaultSalePrice ?? p.salePrice ?? 0;
-  const rackLocation = p.rackLocation || 'Yard Bay A-01';
-  const mediaUrl = p.mediaUrl || p.imageUrl;
-  const packUnit = p.packaging?.packUnit || 'Box';
-  const marginPercent = salePrice > 0 ? (((salePrice - purchaseCost) / salePrice) * 100).toFixed(1) : '20.0';
+  const rackLocation = p.rackLocation || '—';
+  const mediaUrl = p.mediaUrl || p.imageUrl || '';
+  const packUnit = p.packaging?.packUnit || 'Unit';
+  const marginPercent =
+    salePrice > 0 && purchaseCost > 0
+      ? (((salePrice - purchaseCost) / salePrice) * 100).toFixed(1)
+      : '—';
 
   const handleArchive = async () => {
     if (!organization || !user || !p.id) return;
@@ -136,7 +156,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={productName}
-      subtitle={`SKU: ${sku} • Brand: ${brand} • Line: ${categoryType.toUpperCase()}`}
+      subtitle={`SKU: ${sku} • Brand: ${brand} • Line: ${String(categoryType).toUpperCase()}`}
       width="xl"
       footer={
         <div className="flex items-center justify-between w-full">
@@ -210,7 +230,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
         <Tabs
           tabs={[
             { id: 'overview', label: 'Overview & Technical Specs' },
-            { id: 'batches', label: 'Yard Storage & Batches' },
+            { id: 'batches', label: `Yard Storage & Batches (${batches.length})` },
             { id: 'pricing', label: 'Commercial & GST Slabs' },
             { id: 'history', label: 'Audit Trail & Movements' },
           ]}
@@ -221,32 +241,38 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
         {/* Tab Contents */}
         {activeTab === 'overview' && (
           <div className="space-y-4 text-xs">
-            {/* Category Specific Technical Grid */}
+            {/* Category Specific Technical Grid — real Firestore fields only */}
             {categoryType === 'tiles' && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
-                  <span className="text-[#64748B] block text-[11px]">Tile Size & Dimensions</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.tileDimensions || '600x1200 mm'}</span>
+                  <span className="text-[#64748B] block text-[11px]">Tile Size &amp; Dimensions</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.tileDimensions || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Surface Finish</span>
-                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.surfaceFinish || 'Glossy'}</span>
+                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.surfaceFinish || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Body Type</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.tileBodyType || 'GVT'}</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.tileBodyType || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Box Coverage Ratio</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.coveragePerBoxSqFt || 15.5} Sq. Ft / Box</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">
+                    {p.coveragePerBoxSqFt ? `${p.coveragePerBoxSqFt} Sq. Ft / Box` : '—'}
+                  </span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
-                  <span className="text-[#64748B] block text-[11px]">Pieces & Weight</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.piecesPerBox || 4} Pcs ({p.weightPerBoxKg || 28} Kg)</span>
+                  <span className="text-[#64748B] block text-[11px]">Pieces &amp; Weight</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">
+                    {p.piecesPerBox || p.weightPerBoxKg
+                      ? `${p.piecesPerBox ? `${p.piecesPerBox} Pcs` : ''}${p.piecesPerBox && p.weightPerBoxKg ? ' ' : ''}${p.weightPerBoxKg ? `(${p.weightPerBoxKg} Kg)` : ''}`
+                      : '—'}
+                  </span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Quality Grade</span>
-                  <span className="font-bold text-emerald-700 text-sm mt-0.5 block">{p.tileGrade || 'Premium'}</span>
+                  <span className="font-bold text-emerald-700 text-sm mt-0.5 block">{p.tileGrade || '—'}</span>
                 </div>
               </div>
             )}
@@ -255,23 +281,23 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Sanitary Item Type</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.sanitaryType || 'Wash Basin'}</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.sanitaryType || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Mounting Style</span>
-                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.mountingType || 'Wall-Hung'}</span>
+                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.mountingType || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Trap / Outlet Size</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.trapType || 'S-Trap 220mm'}</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.trapType || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
-                  <span className="text-[#64748B] block text-[11px]">Color & Finish</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.colorFinish || 'Glossy White'}</span>
+                  <span className="text-[#64748B] block text-[11px]">Color &amp; Finish</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.colorFinish || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Flushing Mechanism</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.flushingType || 'Dual Flush 3/6L'}</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.flushingType || '—'}</span>
                 </div>
               </div>
             )}
@@ -280,15 +306,17 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Fitting Type</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.fittingType || 'Single Lever Diverter'}</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.fittingType || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
-                  <span className="text-[#64748B] block text-[11px]">Material & Finish</span>
-                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.materialFinish || 'Chrome Plated Brass'}</span>
+                  <span className="text-[#64748B] block text-[11px]">Material &amp; Finish</span>
+                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.materialFinish || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Warranty Period</span>
-                  <span className="font-bold text-emerald-700 text-sm mt-0.5 block">{p.warrantyYears || 10} Years Warranty</span>
+                  <span className="font-bold text-emerald-700 text-sm mt-0.5 block">
+                    {p.warrantyYears ? `${p.warrantyYears} Years` : '—'}
+                  </span>
                 </div>
               </div>
             )}
@@ -297,15 +325,19 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Chemical Grade</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.chemicalType || 'Type 2 Tile Adhesive'}</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.chemicalType || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Pack Bag Size</span>
-                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.packSizeKg || 20} Kg Bag</span>
+                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">
+                    {p.packSizeKg ? `${p.packSizeKg} Kg Bag` : '—'}
+                  </span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Coverage Per Bag</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">~{p.coverageSqFtPerBag || 55} Sq. Ft</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">
+                    {p.coverageSqFtPerBag ? `${p.coverageSqFtPerBag} Sq. Ft` : '—'}
+                  </span>
                 </div>
               </div>
             )}
@@ -314,15 +346,15 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Pipe / Fitting Type</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.pipeType || 'CPVC Pipe'}</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.pipeType || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Outer Diameter / Size</span>
-                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.outerDiameter || '3/4 inch (20mm)'}</span>
+                  <span className="font-bold text-[#0D5C63] text-sm mt-0.5 block">{p.outerDiameter || '—'}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                   <span className="text-[#64748B] block text-[11px]">Pressure Rating / Class</span>
-                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.pressureRating || 'SDR 11'}</span>
+                  <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{p.pressureRating || '—'}</span>
                 </div>
               </div>
             )}
@@ -334,16 +366,18 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               </div>
               <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
                 <span className="text-[#64748B] block text-[11px]">GST Rate Slab</span>
-                <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">{gstRate}% ({gstRate / 2}% CGST + {gstRate / 2}% SGST)</span>
+                <span className="font-bold text-[#0B1F33] text-sm mt-0.5 block">
+                  {gstRate}% ({gstRate / 2}% CGST + {gstRate / 2}% SGST)
+                </span>
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-[#E6F4F1] border border-[#0D5C63]/20">
               <h5 className="font-bold text-[#0D5C63] mb-1 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-[#0D5C63]" /> Statutory Tax & Yard Dispatch Guidelines
+                <ShieldCheck className="w-4 h-4 text-[#0D5C63]" /> Statutory Tax &amp; Yard Dispatch Guidelines
               </h5>
               <p className="text-[#0B1F33] leading-relaxed">
-                Registered under statutory HSN {hsnCode}. Price per {packUnit}. Godown Gate Pass required before truck loading.
+                HSN {hsnCode}. Priced per {packUnit}. Verify shade/lot match on dispatch.
               </p>
             </div>
           </div>
@@ -351,31 +385,51 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
 
         {activeTab === 'batches' && (
           <div className="space-y-3 text-xs">
-            <div className="p-3.5 rounded-xl bg-white border-2 border-[#0D5C63] shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#0D5C63] bg-[#E6F4F1] px-2 py-0.5 rounded">
-                    ACTIVE GODOWN STOCK
-                  </span>
-                  <span className="text-xs font-mono font-bold text-[#0B1F33]">Shade/Lot: S-101 / L-04</span>
-                </div>
-                <Badge status="in_stock" size="sm" />
+            {isLoadingBatches ? (
+              <div className="p-6 text-center text-[#64748B] bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                Loading real-time batches from Cloud Firestore...
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-3">
-                <div>
-                  <span className="text-[#64748B] block text-[10px]">CALIBER / SET</span>
-                  <span className="font-bold text-[#0B1F33]">Grade Premium</span>
-                </div>
-                <div>
-                  <span className="text-[#64748B] block text-[10px]">AVAILABLE STOCK</span>
-                  <span className="font-bold text-[#0D5C63] font-mono-num">120 {packUnit}s</span>
-                </div>
-                <div>
-                  <span className="text-[#64748B] block text-[10px]">GODOWN BAY</span>
-                  <span className="font-bold text-[#0B1F33] font-mono-num">{rackLocation}</span>
-                </div>
+            ) : batches.length === 0 ? (
+              <div className="p-6 text-center text-[#64748B] bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                No stock batches recorded for this product in Cloud Firestore yet. Inward stock via GRN or Batch Ledger.
               </div>
-            </div>
+            ) : (
+              batches.map((b) => (
+                <div key={b.id} className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-2xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-[#0D5C63] bg-[#E6F4F1] px-2 py-0.5 rounded uppercase">
+                        {b.status}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-[#0B1F33]">
+                        Lot/Shade: {b.shadeNumber || b.batchNumber || '—'}
+                      </span>
+                    </div>
+                    <Badge status={b.availableQuantity > 0 ? 'in_stock' : 'out_of_stock'} size="sm" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-3">
+                    <div>
+                      <span className="text-[#64748B] block text-[10px]">TONE / CALIBER</span>
+                      <span className="font-bold text-[#0B1F33]">
+                        {[b.toneCode, b.caliberCode].filter(Boolean).join(' / ') || '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#64748B] block text-[10px]">AVAILABLE STOCK</span>
+                      <span className="font-bold text-[#0D5C63] font-mono-num">
+                        {b.availableQuantity} {packUnit}{b.availableQuantity === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#64748B] block text-[10px]">GODOWN BAY</span>
+                      <span className="font-bold text-[#0B1F33] font-mono-num">
+                        {b.storageLocation || rackLocation}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -406,9 +460,11 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200">
                 <span className="text-emerald-800 block text-[11px] font-bold">Calculated Gross Margin %</span>
                 <span className="text-xl font-extrabold text-emerald-700 font-mono-num mt-1 block">
-                  {marginPercent}%
+                  {marginPercent === '—' ? '—' : `${marginPercent}%`}
                 </span>
-                <span className="text-[10px] text-emerald-700 font-medium">Net profit per {packUnit}: ₹{safeToFixed((salePrice || 0) - (purchaseCost || 0))}</span>
+                <span className="text-[10px] text-emerald-700 font-medium">
+                  Net profit per {packUnit}: ₹{safeToFixed((salePrice || 0) - (purchaseCost || 0))}
+                </span>
               </div>
             </div>
           </div>
@@ -418,7 +474,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
           <div className="space-y-3 text-xs">
             <span className="font-bold text-[#0B1F33]">Firestore Product Lifecycle History</span>
             <div className="p-3 bg-[#F8FAFC] border rounded-xl text-[#64748B]">
-              <p>Product record created by {p.createdByUid || 'Staff User'} on {formatDate(p.createdAt)}</p>
+              <p>Product record created by {p.createdByUid || '—'} on {formatDate(p.createdAt) || '—'}</p>
             </div>
           </div>
         )}

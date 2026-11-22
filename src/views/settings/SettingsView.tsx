@@ -51,9 +51,9 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const totalBranchesCount = allStores.length || stores.length || 1;
-  const activeStaffRole = currentStaff?.roleId ? currentStaff.roleId.toUpperCase() : 'ADMIN';
-  const permissionsCount = resolvedRole?.permissions?.length || 24;
+  const totalBranchesCount = allStores.length || stores.length || 0;
+  const activeStaffRole = currentStaff?.roleId ? currentStaff.roleId.toUpperCase() : 'STAFF';
+  const permissionsCount = resolvedRole?.permissions?.length || 0;
 
   const tabList: TabConfig[] = [
     {
@@ -122,18 +122,18 @@ export const SettingsView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Business Entity"
-          value={organization?.name || 'Vetrify Enterprise'}
+          value={organization?.name || '—'}
           subtitle={
             organization?.gstin
               ? `GST: ${organization.gstin}`
-              : 'Enterprise Multi-Tenant'
+              : 'GSTIN Not Configured'
           }
           icon={<Building2 className="w-5 h-5 text-[#0D5C63]" />}
         />
         <KpiCard
-          title="Dispensary Branches"
+          title="Showrooms & Branches"
           value={`${totalBranchesCount} Active`}
-          subtitle={`Current: ${currentStore?.name || 'Main Branch'}`}
+          subtitle={currentStore?.name ? `Current: ${currentStore.name}` : 'No Branch Selected'}
           icon={<Store className="w-5 h-5 text-indigo-600" />}
         />
         <KpiCard

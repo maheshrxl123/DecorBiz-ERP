@@ -28,64 +28,6 @@ interface ArchitectCommissionModalProps {
   onSelectPartnerForSale?: (partner: ArchitectPartner) => void;
 }
 
-export const INITIAL_ARCHITECT_PARTNERS: ArchitectPartner[] = [
-  {
-    id: 'arch_01',
-    name: 'Ar. Rajesh Sharma',
-    firmName: 'Studio Design & Architecture',
-    phone: '+91 98220 12345',
-    email: 'rajesh@studiodesign.in',
-    role: 'Architect',
-    defaultCommissionPercent: 8,
-    totalBusinessDriven: 485000,
-    totalCommissionAccrued: 38800,
-    totalCommissionPaid: 30000,
-    pendingBalance: 8800,
-    status: 'active',
-  },
-  {
-    id: 'arch_02',
-    name: 'Pooja Varma',
-    firmName: 'Interiors by Pooja',
-    phone: '+91 98221 67890',
-    email: 'pooja@poojainteriors.com',
-    role: 'Interior Designer',
-    defaultCommissionPercent: 10,
-    totalBusinessDriven: 320000,
-    totalCommissionAccrued: 32000,
-    totalCommissionPaid: 25000,
-    pendingBalance: 7000,
-    status: 'active',
-  },
-  {
-    id: 'arch_03',
-    name: 'Suresh Mistri & Sons',
-    firmName: 'Shree Ram Tile Contractors',
-    phone: '+91 98450 44321',
-    role: 'Tile Mason / Mistri',
-    defaultCommissionPercent: 5,
-    totalBusinessDriven: 175000,
-    totalCommissionAccrued: 8750,
-    totalCommissionPaid: 8000,
-    pendingBalance: 750,
-    status: 'active',
-  },
-  {
-    id: 'arch_04',
-    name: 'Vikram Mehta',
-    firmName: 'Mehta Civil & Infrastructure',
-    phone: '+91 98900 99887',
-    email: 'vikram@mehtacivil.com',
-    role: 'Civil Contractor',
-    defaultCommissionPercent: 6,
-    totalBusinessDriven: 620000,
-    totalCommissionAccrued: 37200,
-    totalCommissionPaid: 20000,
-    pendingBalance: 17200,
-    status: 'active',
-  },
-];
-
 export const ArchitectCommissionModal: React.FC<ArchitectCommissionModalProps> = ({
   isOpen,
   onClose,
@@ -446,7 +388,16 @@ export const ArchitectCommissionModal: React.FC<ArchitectCommissionModalProps> =
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredPartners.map((p) => {
+              {filteredPartners.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-10 text-center text-slate-400">
+                    {partners.length === 0
+                      ? 'No architect or contractor partners saved in Cloud Firestore yet. Click "Add New Partner" above to register one.'
+                      : 'No partners match your search or role filter.'}
+                  </td>
+                </tr>
+              ) : (
+                filteredPartners.map((p) => {
                 return (
                   <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="py-3">
@@ -516,7 +467,7 @@ export const ArchitectCommissionModal: React.FC<ArchitectCommissionModalProps> =
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

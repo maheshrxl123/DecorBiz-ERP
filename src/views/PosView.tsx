@@ -43,11 +43,17 @@ import { CustomerSelectModal } from '../components/pos/CustomerSelectModal';
 import { ManagerCreditOverrideModal } from '../components/pos/ManagerCreditOverrideModal';
 import { TileCalculatorModal } from '../components/pos/TileCalculatorModal';
 import { QuotationModal, PosQuotation } from '../components/pos/QuotationModal';
-import { ComboSuiteBuilderModal } from '../components/pos/ComboSuiteBuilderModal';
 import {
-  ArchitectCommissionModal,
-  INITIAL_ARCHITECT_PARTNERS,
-} from '../components/pos/ArchitectCommissionModal';
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { db } from '../lib/firebase/config';
+import { ComboSuiteBuilderModal } from '../components/pos/ComboSuiteBuilderModal';
+import { ArchitectCommissionModal } from '../components/pos/ArchitectCommissionModal';
 
 interface HeldBill {
   id: string;
@@ -112,32 +118,60 @@ export const PosView: React.FC = () => {
     piecesPerBox?: number;
   } | null>(null);
 
-  // Quotations / Proforma Estimates State
+  // Quotations / Proforma Estimates State (Cloud Firestore backed)
   const [isQuotationsModalOpen, setIsQuotationsModalOpen] = useState(false);
-  const [quotations, setQuotations] = useState<PosQuotation[]>(() => {
-    try {
-      const saved = localStorage.getItem('vetrify_pos_quotations');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [quotations, setQuotations] = useState<PosQuotation[]>([]);
   const [isQuotationPrint, setIsQuotationPrint] = useState(false);
 
   // Combo & Bathroom Suite Builder State
   const [isComboSuiteOpen, setIsComboSuiteOpen] = useState(false);
 
-  // Architect, Interior Designer & Contractor Referral Commission State
+  // Architect, Interior Designer & Contractor Referral Commission State (Cloud Firestore backed)
   const [isArchitectModalOpen, setIsArchitectModalOpen] = useState(false);
-  const [architectPartners, setArchitectPartners] = useState<ArchitectPartner[]>(() => {
-    try {
-      const saved = localStorage.getItem('vetrify_architect_partners');
-      return saved ? JSON.parse(saved) : INITIAL_ARCHITECT_PARTNERS;
-    } catch {
-      return INITIAL_ARCHITECT_PARTNERS;
-    }
-  });
+  const [architectPartners, setArchitectPartners] = useState<ArchitectPartner[]>([]);
   const [selectedArchitect, setSelectedArchitect] = useState<ArchitectPartner | null>(null);
+
+  useEffect(() => {
+    if (!organization?.id) {
+      setArchitectPartners([]);
+      setQuotations([]);
+      return;
+    }
+    let active = true;
+
+    const loadPosSubcollections = async () => {
+      try {
+        const [partnersSnap, quotesSnap] = await Promise.all([
+          getDocs(collection(db, 'organizations', organization.id, 'architectPartners')),
+          getDocs(collection(db, 'organizations', organization.id, 'quotations')),
+        ]);
+        if (!active) return;
+
+        const loadedPartners: ArchitectPartner[] = partnersSnap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<ArchitectPartner, 'id'>),
+        }));
+        setArchitectPartners(loadedPartners);
+
+        const loadedQuotes: PosQuotation[] = quotesSnap.docs.map((d) => {
+          const data = d.data() as any;
+          return {
+            ...data,
+            id: d.id,
+            timestamp: data.timestamp?.toDate?.() || new Date(data.timestamp || Date.now()),
+          } as PosQuotation;
+        });
+        setQuotations(loadedQuotes);
+      } catch (err) {
+        console.warn('Could not load POS partners/quotations from Firestore:', err);
+      }
+    };
+
+    loadPosSubcollections();
+    return () => {
+      active = false;
+    };
+  }, [organization?.id]);
 
   // Modals State
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -457,60 +491,79 @@ export const PosView: React.FC = () => {
   };
 
   // 8. Architect / Referral Partner Handlers
-  const handleAddArchitectPartner = (
+  const handleAddArchitectPartner = async (
     partnerData: Omit<
       ArchitectPartner,
       'id' | 'totalBusinessDriven' | 'totalCommissionAccrued' | 'totalCommissionPaid' | 'pendingBalance'
     >
   ) => {
+    if (!organization?.id) return;
+    const id = `arch_${Date.now()}`;
     const newPartner: ArchitectPartner = {
       ...partnerData,
-      id: `arch_${Date.now()}`,
+      id,
       totalBusinessDriven: 0,
       totalCommissionAccrued: 0,
       totalCommissionPaid: 0,
       pendingBalance: 0,
     };
-    const updated = [newPartner, ...architectPartners];
-    setArchitectPartners(updated);
+    setArchitectPartners((prev) => [newPartner, ...prev]);
     try {
-      localStorage.setItem('vetrify_architect_partners', JSON.stringify(updated));
+      await setDoc(doc(db, 'organizations', organization.id, 'architectPartners', id), {
+        ...newPartner,
+        organizationId: organization.id,
+        totalInvoicesCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
     } catch (e) {
-      console.warn('Failed to save architect partners', e);
+      console.warn('Failed to save architect partner to Firestore', e);
     }
   };
 
-  const handleRecordArchitectPayout = (partnerId: string, amount: number, _notes?: string) => {
+  const handleRecordArchitectPayout = async (partnerId: string, amount: number, notes?: string) => {
+    if (!organization?.id) return;
+    let targetUpdated: ArchitectPartner | null = null;
     const updated = architectPartners.map((p) => {
       if (p.id === partnerId) {
         const newPaid = (p.totalCommissionPaid || 0) + amount;
-        const newBal = (p.totalCommissionAccrued || 0) - newPaid;
-        return {
+        const newBal = Math.max(0, (p.totalCommissionAccrued || 0) - newPaid);
+        targetUpdated = {
           ...p,
           totalCommissionPaid: newPaid,
-          pendingBalance: Math.max(0, newBal),
+          pendingBalance: newBal,
         };
+        return targetUpdated;
       }
       return p;
     });
     setArchitectPartners(updated);
-    try {
-      localStorage.setItem('vetrify_architect_partners', JSON.stringify(updated));
-    } catch (e) {
-      console.warn('Failed to update architect payout', e);
+    if (targetUpdated) {
+      try {
+        await updateDoc(doc(db, 'organizations', organization.id, 'architectPartners', partnerId), {
+          totalCommissionPaid: (targetUpdated as ArchitectPartner).totalCommissionPaid,
+          pendingBalance: (targetUpdated as ArchitectPartner).pendingBalance,
+          lastPayoutNotes: notes || null,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('Failed to update architect payout in Firestore', e);
+      }
     }
   };
 
-  // 9. Quotation / Proforma Estimate Handlers
-  const handleSaveQuotation = () => {
+  // 9. Quotation / Proforma Estimate Handlers (Cloud Firestore backed)
+  const handleSaveQuotation = async () => {
+    if (!organization?.id) return;
     if (cartItems.length === 0) {
       setErrorMessage('Cannot generate quotation for an empty cart. Add items first.');
       return;
     }
 
-    const quotNum = `EST-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const quotNum = `EST-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+    const id = `quot_${Date.now()}`;
     const newQuotation: PosQuotation = {
-      id: `quot_${Date.now()}`,
+      id,
       quotationNumber: quotNum,
       customerName: customerName.trim() || 'Project Client',
       customerPhone: customerPhone.trim() || undefined,
@@ -529,30 +582,42 @@ export const PosView: React.FC = () => {
       notes: 'Estimate valid for 15 days. Subject to stock availability in specified shade/lot.',
     };
 
-    const updated = [newQuotation, ...quotations];
-    setQuotations(updated);
+    setQuotations((prev) => [newQuotation, ...prev]);
     try {
-      localStorage.setItem('vetrify_pos_quotations', JSON.stringify(updated));
+      await setDoc(doc(db, 'organizations', organization.id, 'quotations', id), {
+        ...newQuotation,
+        organizationId: organization.id,
+        storeId: currentStore?.id || null,
+        timestamp: newQuotation.timestamp.toISOString(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
     } catch (e) {
-      console.warn('Failed to save quotation to localStorage', e);
+      console.warn('Failed to save quotation to Firestore', e);
     }
     setIsQuotationsModalOpen(true);
   };
 
-  const handleConvertQuotation = (quotation: PosQuotation) => {
+  const handleConvertQuotation = async (quotation: PosQuotation) => {
     setCartItems(quotation.items);
     setCustomerName(quotation.customerName);
     setCustomerPhone(quotation.customerPhone || '');
     setFreightAmount(quotation.freightAmount ? String(quotation.freightAmount) : '');
     setLoadingUnloadingAmount(quotation.loadingUnloadingAmount ? String(quotation.loadingUnloadingAmount) : '');
 
-    const updated = quotations.map((q) =>
-      q.id === quotation.id ? { ...q, status: 'converted' as const } : q
+    setQuotations((prev) =>
+      prev.map((q) => (q.id === quotation.id ? { ...q, status: 'converted' as const } : q))
     );
-    setQuotations(updated);
-    try {
-      localStorage.setItem('vetrify_pos_quotations', JSON.stringify(updated));
-    } catch {}
+    if (organization?.id) {
+      try {
+        await updateDoc(doc(db, 'organizations', organization.id, 'quotations', quotation.id), {
+          status: 'converted',
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('Failed to mark quotation converted in Firestore', e);
+      }
+    }
 
     setIsQuotationsModalOpen(false);
   };
@@ -564,7 +629,7 @@ export const PosView: React.FC = () => {
     const taxAmount = quotation.taxAmount ?? ((quotation.billSummary?.cgstAmount || 0) + (quotation.billSummary?.sgstAmount || 0));
     const grandTotal = quotation.grandTotal ?? quotation.billSummary?.grandTotal ?? 0;
 
-    const mockInvoice: SaleInvoice = {
+    const quotationPreviewInvoice: SaleInvoice = {
       id: quotation.id,
       invoiceNumber: quotation.quotationNumber,
       organizationId: organization?.id || '',
@@ -628,7 +693,7 @@ export const PosView: React.FC = () => {
       updatedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any,
     };
 
-    setCompletedInvoice(mockInvoice);
+    setCompletedInvoice(quotationPreviewInvoice);
     setIsQuotationPrint(true);
     setIsPrintModalOpen(true);
   };
@@ -668,39 +733,44 @@ export const PosView: React.FC = () => {
         },
       });
 
-      // Record architect/referral partner commission if selected
+      // Record architect/referral partner commission in Firestore if selected
       if (selectedArchitect) {
         const commissionPct = selectedArchitect.defaultCommissionPercent || 5;
         const commissionEarned = (billSummary.taxableAmount * commissionPct) / 100;
+        let updatedPartner: ArchitectPartner | null = null;
         const updatedPartners = architectPartners.map((p) => {
           if (p.id === selectedArchitect.id) {
             const newDriven = (p.totalBusinessDriven || 0) + billSummary.grandTotal;
             const newAccrued = (p.totalCommissionAccrued || 0) + commissionEarned;
-            const newBal = newAccrued - (p.totalCommissionPaid || 0);
-            return {
+            const newBal = Math.max(0, newAccrued - (p.totalCommissionPaid || 0));
+            updatedPartner = {
               ...p,
               totalBusinessDriven: newDriven,
               totalCommissionAccrued: newAccrued,
-              pendingBalance: Math.max(0, newBal),
+              pendingBalance: newBal,
             };
+            return updatedPartner;
           }
           return p;
         });
         setArchitectPartners(updatedPartners);
-        try {
-          localStorage.setItem('vetrify_architect_partners', JSON.stringify(updatedPartners));
-        } catch {}
+        if (updatedPartner) {
+          try {
+            const pRef = doc(db, 'organizations', organization.id, 'architectPartners', selectedArchitect.id);
+            await updateDoc(pRef, {
+              totalBusinessDriven: (updatedPartner as ArchitectPartner).totalBusinessDriven,
+              totalCommissionAccrued: (updatedPartner as ArchitectPartner).totalCommissionAccrued,
+              pendingBalance: (updatedPartner as ArchitectPartner).pendingBalance,
+              updatedAt: serverTimestamp(),
+            });
+          } catch (e) {
+            console.warn('Failed to update architect commission in Firestore', e);
+          }
+        }
       }
 
       setCompletedInvoice(invoice);
       setRecentInvoices((prev) => [invoice, ...prev.filter((i) => i.id !== invoice.id)]);
-      try {
-        const stored = JSON.parse(localStorage.getItem(`vetrify_recent_invoices_${organization.id}`) || '[]');
-        localStorage.setItem(
-          `vetrify_recent_invoices_${organization.id}`,
-          JSON.stringify([invoice, ...stored.filter((i: any) => i.id !== invoice.id)].slice(0, 50))
-        );
-      } catch {}
       setIsQuotationPrint(false);
       setIsPrintModalOpen(true);
       setCartItems([]);
@@ -1632,6 +1702,7 @@ export const PosView: React.FC = () => {
         isOpen={isComboSuiteOpen}
         onClose={() => setIsComboSuiteOpen(false)}
         onAddSuiteToCart={handleAddSuiteToCart}
+        availableProducts={products}
       />
 
       {/* Architect & Interior Designer Commission Tracker Modal */}

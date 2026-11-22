@@ -50,11 +50,11 @@ export const EInvoiceSettingsView: React.FC = () => {
   const [isEwayModalOpen, setIsEwayModalOpen] = useState(false);
   const [selectedInvoiceForEwb, setSelectedInvoiceForEwb] = useState<SaleInvoice | null>(null);
   const [ewbVehicleNumber, setEwbVehicleNumber] = useState('');
-  const [ewbDistanceKm, setEwbDistanceKm] = useState(65);
-  const [ewbTransporterName, setEwbTransporterName] = useState('Local Ceramic Transport / Tempo');
+  const [ewbDistanceKm, setEwbDistanceKm] = useState(0);
+  const [ewbTransporterName, setEwbTransporterName] = useState('');
   const [ewbTransporterId, setEwbTransporterId] = useState('');
-  const [ewbFromPincode, setEwbFromPincode] = useState('110001');
-  const [ewbToPincode, setEwbToPincode] = useState('110034');
+  const [ewbFromPincode, setEwbFromPincode] = useState('');
+  const [ewbToPincode, setEwbToPincode] = useState('');
   const [isGeneratingEwb, setIsGeneratingEwb] = useState(false);
 
   // Load Initial Configuration and Datasets
@@ -88,23 +88,29 @@ export const EInvoiceSettingsView: React.FC = () => {
       if (conf) {
         setConfig(conf);
       } else {
+        const now = new Date();
+        const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+        const orgGstin = organization.gstin || '';
         setConfig({
           id: '',
           organizationId: organization.id,
-          legalName: organization.name || 'Royal Ceramics & Sanitaryware LLP',
-          gstin: organization.gstin || '07AABCR1234F1Z5',
-          pan: (organization.gstin || 'AABCR1234F').slice(2, 12),
+          legalName: organization.name || '',
+          gstin: orgGstin,
+          pan: orgGstin.length >= 12 ? orgGstin.slice(2, 12) : '',
           taxpayerType: 'REGULAR',
-          aggregateTurnover: 50000000,
+          aggregateTurnover: 0,
           eInvoiceApplicable: true,
           defaultIRPProvider: 'NIC',
           apiEnvironment: 'SANDBOX',
           enableEInvoiceGeneration: true,
           enableEWayBill: true,
-          financialYear: '2024-2025',
+          financialYear: `${fyStartYear}-${fyStartYear + 1}`,
           updatedAt: null as any,
           updatedBy: '',
         });
+      }
+      if (currentStore?.address?.postalCode) {
+        setEwbFromPincode((prev) => prev || currentStore.address?.postalCode || '');
       }
 
       setInvoices(invList);
@@ -164,6 +170,12 @@ export const EInvoiceSettingsView: React.FC = () => {
   // Generate IRN for Invoice
   const handleGenerateIrn = async (inv: SaleInvoice) => {
     if (!organization?.id || !firestoreUser?.uid || !config) return;
+    const supplierGstin = (config.gstin || organization.gstin || '').trim();
+    const customerGstin = ((inv as any).customerGstin || '').trim();
+    if (supplierGstin.length !== 15) {
+      toastError('Please configure a valid 15-character Supplier GSTIN in IRP Configuration first.');
+      return;
+    }
     try {
       const newEinv = await gstService.generateIRN(
         organization.id,
@@ -176,8 +188,8 @@ export const EInvoiceSettingsView: React.FC = () => {
           id: inv.id,
           invoiceNumber: inv.invoiceNumber,
           invoiceDate: new Date().toISOString().slice(0, 10),
-          supplierGstin: config.gstin || '07AABCR1234F1Z5',
-          customerGstin: (inv as any).customerGstin || '07AABCC5678G1Z2',
+          supplierGstin,
+          customerGstin,
           customerName: inv.customerName,
           taxableAmount: inv.taxableAmount,
           totalTax: inv.totalTax,

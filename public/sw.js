@@ -1,5 +1,5 @@
 // DecorBiz Service Worker Shell for PWA & Offline Caching
-const CACHE_NAME = 'decorbiz-v3-cache';
+const CACHE_NAME = 'decorbiz-v4-cache';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -52,7 +52,8 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      return cachedResponse || fetch(request);
+      if (cachedResponse) return cachedResponse;
+      return fetch(request).catch(() => new Response('', { status: 504, statusText: 'Offline' }));
     })
   );
 });

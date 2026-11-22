@@ -367,34 +367,42 @@ export const MasterDataManagementModal: React.FC<MasterDataManagementModalProps>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  <tr className="hover:bg-[#F8FAFC]">
-                    <td className="p-2.5 font-mono font-bold text-[#0B1F33]">6907</td>
-                    <td className="p-2.5 text-[#334155]">Vitrified, Ceramic & Wall/Floor Tiles</td>
-                    <td className="p-2.5 text-right font-mono font-bold text-[#0D5C63]">18% GST</td>
-                  </tr>
-                  <tr className="hover:bg-[#F8FAFC]">
-                    <td className="p-2.5 font-mono font-bold text-[#0B1F33]">6910</td>
-                    <td className="p-2.5 text-[#334155]">Ceramic Sanitaryware (Basins, WCs, Urinals)</td>
-                    <td className="p-2.5 text-right font-mono font-bold text-[#0D5C63]">18% GST</td>
-                  </tr>
-                  <tr className="hover:bg-[#F8FAFC]">
-                    <td className="p-2.5 font-mono font-bold text-[#0B1F33]">8481</td>
-                    <td className="p-2.5 text-[#334155]">Taps, Faucets, Diverters & Showers</td>
-                    <td className="p-2.5 text-right font-mono font-bold text-[#0D5C63]">18% GST</td>
-                  </tr>
-                  <tr className="hover:bg-[#F8FAFC]">
-                    <td className="p-2.5 font-mono font-bold text-[#0B1F33]">3506</td>
-                    <td className="p-2.5 text-[#334155]">Tile Adhesive & Epoxy Grout Chemicals</td>
-                    <td className="p-2.5 text-right font-mono font-bold text-[#0D5C63]">12% GST</td>
-                  </tr>
-                  <tr className="hover:bg-[#F8FAFC]">
-                    <td className="p-2.5 font-mono font-bold text-[#0B1F33]">3917</td>
-                    <td className="p-2.5 text-[#334155]">CPVC / UPVC Pipes & Plumbing Fittings</td>
-                    <td className="p-2.5 text-right font-mono font-bold text-[#0D5C63]">18% GST</td>
-                  </tr>
+                  {hsnCodes.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="p-6 text-center text-[#64748B]">
+                        No HSN records configured in Cloud Firestore yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    hsnCodes.map((hsn) => (
+                      <tr key={hsn.id} className="hover:bg-[#F8FAFC]">
+                        <td className="p-2.5 font-mono font-bold text-[#0B1F33]">{hsn.code}</td>
+                        <td className="p-2.5 text-[#334155]">{hsn.description || '—'}</td>
+                        <td className="p-2.5 text-right font-mono font-bold text-[#0D5C63]">
+                          {hsn.defaultGstRate}% GST
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {taxes.length > 0 && (
+              <div className="border border-[#E2E8F0] rounded-xl overflow-hidden">
+                <div className="bg-[#F8FAFC] px-3 py-2 border-b text-[11px] font-bold text-[#64748B] uppercase">
+                  Configured Tax Slabs ({taxes.length})
+                </div>
+                <div className="divide-y">
+                  {taxes.map((slab) => (
+                    <div key={slab.id} className="p-2.5 flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#0B1F33]">{slab.name}</span>
+                      <span className="font-mono font-bold text-[#0D5C63]">{slab.gstRate}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

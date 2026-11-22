@@ -31,7 +31,7 @@ export const GstTaxAuditReport: React.FC<GstTaxAuditReportProps> = ({ rows }) =>
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `vetrify_hsn_tax_audit_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `decorbiz_hsn_tax_audit_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -41,7 +41,6 @@ import { AuthLoadingScreen } from './components/auth/AuthLoadingScreen';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Drawer } from './components/ui/Modal';
 import { NavModuleId, StoreContext, UserProfile } from './types';
-import { APP_CONFIG } from '../config/app.config';
 
 // Storefront & Auth Routes (PRD Section 2.2)
 import { BusinessCard } from './storefront/BusinessCard';
@@ -87,11 +86,11 @@ function AuthenticatedAppShell() {
 
   const activeStoreContext: StoreContext = {
     id: firestoreStore?.id || 'store_main',
-    name: firestoreStore?.name || organization?.name || APP_CONFIG.placeholderBusiness.tradeName,
+    name: firestoreStore?.name || organization?.name || '',
     location: firestoreStore?.address
-      ? [firestoreStore.address.city, firestoreStore.address.state].filter(Boolean).join(', ') || APP_CONFIG.placeholderBusiness.city
-      : APP_CONFIG.placeholderBusiness.city,
-    gstin: firestoreStore?.gstin || organization?.gstin || APP_CONFIG.placeholderBusiness.gstin,
+      ? [firestoreStore.address.city, firestoreStore.address.state].filter(Boolean).join(', ')
+      : '',
+    gstin: firestoreStore?.gstin || organization?.gstin || '',
     status: 'online',
   };
 

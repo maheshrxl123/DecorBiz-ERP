@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { useAuth } from '../../auth/AuthProvider';
 import { useToast } from '../../context/ToastContext';
 import { productService } from '../../services/productService';
 import { ecommerceService } from '../../services/ecommerceService';
+import { mediaService } from '../../services/mediaService';
+import { getFirebaseAuth } from '../../lib/firebase/config';
 import { PharmacyProduct } from '../../types/firestore';
 import { CustomerAddress, OnlineOrder } from '../../types/ecommerce';
 import { 
@@ -13,6 +16,7 @@ import {
 
 export const CustomerStorefrontView: React.FC = () => {
   const { organization, currentStore, firestoreUser, currentStaff } = useWorkspace();
+  const { user } = useAuth();
   const { success, error, warning } = useToast();
   const [products, setProducts] = useState<PharmacyProduct[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,15 +113,31 @@ export const CustomerStorefrontView: React.FC = () => {
     }
   };
 
-  const handlePlanUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePlanUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !orgId) return;
     setUploadingPlan(true);
     try {
-      const planUrl = URL.createObjectURL(file);
-      setUploadedPlanFiles(prev => [...prev, { name: file.name, url: planUrl }]);
+      const fbUser = getFirebaseAuth().currentUser;
+      const token = fbUser ? await fbUser.getIdToken() : '';
+      if (!token) {
+        throw new Error('Please sign in to upload floor plans to ImageKit.');
+      }
+      const uploadRes = await mediaService.uploadAsset({
+        organizationId: orgId,
+        storeId,
+        category: 'general-document',
+        file,
+        uploadedByUid: user?.uid || customerId,
+        userToken: token,
+      });
+      if (!uploadRes.success || !uploadRes.asset?.secureUrl) {
+        throw new Error(uploadRes.error || 'ImageKit upload failed.');
+      }
+      setUploadedPlanFiles(prev => [...prev, { name: file.name, url: uploadRes.asset!.secureUrl }]);
+      success('Floor plan uploaded to ImageKit CDN.', 'Plan Uploaded');
     } catch (err: any) {
-      error(err?.message || 'File selection failed.', 'Upload Failed');
+      error(err?.message || 'File upload to ImageKit failed.', 'Upload Failed');
     } finally {
       setUploadingPlan(false);
     }
@@ -131,6 +151,14 @@ export const CustomerStorefrontView: React.FC = () => {
       return;
     }
 
+    const unpricedItem = cart.find(i => !(i.product.sellingPrice || i.product.mrp));
+    if (unpricedItem) {
+      warning(`"${unpricedItem.product.productName}" does not have a valid selling price configured in Firestore.`, 'Price Missing');
+      return;
+    }
+
+    const customerPhone = address?.phone || firestoreUser?.phoneNumber || currentStaff?.phone || '';
+
     try {
       const orderItems = cart.map(i => ({
         productId: i.product.id,
@@ -138,9 +166,9 @@ export const CustomerStorefrontView: React.FC = () => {
         brand: i.product.brand,
         sku: i.product.sku,
         qty: i.qty,
-        unitPrice: i.product.sellingPrice || i.product.mrp || 100,
+        unitPrice: i.product.sellingPrice || i.product.mrp || 0,
         discountPercent: 0,
-        gstPercent: i.product.gstRate || 18,
+        gstPercent: i.product.gstRate || 0,
         isPrescriptionRequired: false,
         schedule: ''
       }));
@@ -150,12 +178,12 @@ export const CustomerStorefrontView: React.FC = () => {
         storeId,
         customerId,
         customerName,
-        '9999999999',
+        customerPhone,
         orderItems,
         address || { 
           id: 'pickup', 
           fullName: customerName, 
-          phone: '9999999999', 
+          phone: customerPhone, 
           houseNo: 'Showroom Yard Pickup', 
           street: '', 
           city: '', 
@@ -170,7 +198,7 @@ export const CustomerStorefrontView: React.FC = () => {
         },
         paymentMode,
         fulfilmentType,
-        uploadedPlanFiles.map(f => f.name),
+        uploadedPlanFiles.map(f => f.url),
         { uid: customerId, name: customerName }
       );
 
@@ -203,8 +231,14 @@ export const CustomerStorefrontView: React.FC = () => {
     return matchesSearch && matchesCat;
   });
 
-  const subtotal = cart.reduce((acc, i) => acc + (i.product.sellingPrice || i.product.mrp || 100) * i.qty, 0);
-  const tax = Math.round(subtotal * 0.18); // Default 18% GST for tiles & building fixtures
+  const subtotal = cart.reduce((acc, i) => acc + (i.product.sellingPrice || i.product.mrp || 0) * i.qty, 0);
+  const tax = Math.round(
+    cart.reduce((acc, i) => {
+      const unit = i.product.sellingPrice || i.product.mrp || 0;
+      const rate = i.product.gstRate || 0;
+      return acc + (unit * i.qty * rate) / 100;
+    }, 0)
+  );
   const grandTotal = Math.round(subtotal + tax);
 
   return (
@@ -275,8 +309,8 @@ export const CustomerStorefrontView: React.FC = () => {
           {/* Product Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {filteredProducts.map(product => {
-              const price = product.sellingPrice || product.mrp || 100;
-              const hasDiscount = product.mrp && product.mrp > price;
+              const price = product.sellingPrice || product.mrp || 0;
+              const hasDiscount = Boolean(product.mrp && price > 0 && product.mrp > price);
               const discountPct = hasDiscount ? Math.round(((product.mrp! - price) / product.mrp!) * 100) : 0;
 
               return (
@@ -390,7 +424,9 @@ export const CustomerStorefrontView: React.FC = () => {
                     <div key={item.product.id} className="flex justify-between items-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                       <div className="flex-1 mr-3">
                         <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">{item.product.productName}</h4>
-                        <p className="text-[10px] text-slate-400">{item.product.brand || 'DecorBiz'} &bull; ₹{item.product.sellingPrice || item.product.mrp || 100} / unit</p>
+                        <p className="text-[10px] text-slate-400">
+                          {item.product.brand || '—'} &bull; ₹{item.product.sellingPrice || item.product.mrp || 0} / unit
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => handleUpdateCartQty(item.product.id, -1)} className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">-</button>

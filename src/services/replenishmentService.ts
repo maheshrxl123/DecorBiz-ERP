@@ -161,6 +161,36 @@ export const replenishmentService = {
       const transfers = await transferService.getTransferRequests(orgId);
       const inboundTransfers = transfers.transfers.filter(t => t.destinationStoreId === storeId && ['PENDING_APPROVAL', 'APPROVED', 'ALLOCATED', 'DISPATCHED', 'IN_TRANSIT', 'PARTIALLY_RECEIVED'].includes(t.status));
 
+      // 6. Load recent 30-day sales invoices from Firestore to compute real average daily demand
+      const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const soldQtyLast30Days = new Map<string, number>();
+      try {
+        const invoicesSnap = await getDocs(collection(db, 'organizations', orgId, 'invoices'));
+        invoicesSnap.docs.forEach((invDoc) => {
+          const inv = invDoc.data() as any;
+          if (inv.status === 'cancelled') return;
+          if (storeId && inv.storeId && inv.storeId !== storeId) return;
+          const createdMs = inv.createdAt?.toMillis
+            ? inv.createdAt.toMillis()
+            : inv.createdAt?.seconds
+              ? inv.createdAt.seconds * 1000
+              : 0;
+          if (createdMs && createdMs < thirtyDaysAgoMs) return;
+          if (Array.isArray(inv.items)) {
+            inv.items.forEach((item: any) => {
+              if (item.productId) {
+                soldQtyLast30Days.set(
+                  item.productId,
+                  (soldQtyLast30Days.get(item.productId) || 0) + (Number(item.quantity) || 0)
+                );
+              }
+            });
+          }
+        });
+      } catch (err) {
+        console.warn('Could not load invoices for demand calculation:', err);
+      }
+
       let recsCreated = 0;
       let recsUpdated = 0;
       let criticals = 0;
@@ -191,8 +221,8 @@ export const replenishmentService = {
 
         const effectiveAvailableStock = currentStock - reservedStock + inboundStock + inTransitStock;
 
-        // Calculate Demand (Simplified heuristic for this phase without full invoice parsing)
-        const avgDailyDemand = 0.5; // Stub for demo; real implementation would query invoices
+        // Calculate Real Demand from last 30 days of Firestore invoices
+        const avgDailyDemand = Number(((soldQtyLast30Days.get(prod.id) || 0) / 30).toFixed(2));
         
         // Find Rule
         let rule: ReorderRule | undefined = ruleMap.get(prod.id);

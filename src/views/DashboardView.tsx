@@ -37,13 +37,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
   const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Operations Queue task checkbox states
-  const [tasks, setTasks] = useState([
-    { id: 'task-1', title: 'Reorder fast-moving tiles & building materials', checked: false, isUrgent: true },
-    { id: 'task-2', title: 'Inspect quarantined / damaged lots in warehouse yard', checked: false, isUrgent: true },
-    { id: 'task-3', title: 'Verify pending goods receipt notes (GRNs)', checked: false, isUrgent: false },
-    { id: 'task-4', title: 'Review today\'s POS cash and credit closure logs', checked: false, isUrgent: false },
-  ]);
+  // Operations Queue derived strictly from real Firestore metrics
+  const [tasks, setTasks] = useState<Array<{ id: string; title: string; checked: boolean; isUrgent: boolean }>>([]);
 
   const toggleTask = (id: string) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, checked: !t.checked } : t));
@@ -75,42 +70,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
         timeRange
       );
       setData(metrics);
-      
-      // Update operation checklist titles dynamically if relevant stock issues exist
-      setTasks([
-        { 
-          id: 'task-1', 
-          title: metrics.lowStockCount > 0 
-            ? `Reorder low stock catalog items (${metrics.lowStockCount} items left)` 
-            : 'Reorder fast-moving tiles & building materials', 
-          checked: false, 
-          isUrgent: metrics.lowStockCount > 0 
-        },
-        { 
-          id: 'task-2', 
-          title: metrics.nearExpiryCount > 0 
-            ? `Review slow-moving & aging stock lots (${metrics.nearExpiryCount} lots pending review)` 
-            : 'Inspect quarantined / damaged lots in warehouse yard', 
-          checked: false, 
-          isUrgent: metrics.nearExpiryCount > 0 
-        },
-        { 
-          id: 'task-3', 
-          title: metrics.recentDeliveries.length > 0 
-            ? `Verify pending goods receipt notes (${metrics.recentDeliveries.filter(d => d.status !== 'Received').length} unverified)` 
-            : 'Verify pending goods receipt notes (GRNs)', 
-          checked: false, 
-          isUrgent: false 
-        },
-        { 
-          id: 'task-4', 
-          title: metrics.todayBillsCount > 0 
-            ? `Perform shift close check on ${metrics.todayBillsCount} completed bills` 
-            : 'Review today\'s POS cash and credit closure logs', 
-          checked: false, 
-          isUrgent: false 
-        },
-      ]);
+
+      const dynamicTasks: Array<{ id: string; title: string; checked: boolean; isUrgent: boolean }> = [];
+      if (metrics.lowStockCount > 0) {
+        dynamicTasks.push({
+          id: 'task-low-stock',
+          title: `Reorder low stock catalog items (${metrics.lowStockCount} item${metrics.lowStockCount === 1 ? '' : 's'})`,
+          checked: false,
+          isUrgent: true,
+        });
+      }
+      if (metrics.nearExpiryCount > 0) {
+        dynamicTasks.push({
+          id: 'task-aging',
+          title: `Review aging stock batches (${metrics.nearExpiryCount} batch${metrics.nearExpiryCount === 1 ? '' : 'es'})`,
+          checked: false,
+          isUrgent: true,
+        });
+      }
+      const pendingGrns = metrics.recentDeliveries.filter(d => d.status !== 'Received').length;
+      if (pendingGrns > 0) {
+        dynamicTasks.push({
+          id: 'task-grns',
+          title: `Verify pending goods receipt notes (${pendingGrns} unverified)`,
+          checked: false,
+          isUrgent: false,
+        });
+      }
+      if (metrics.onlineOrdersPending > 0) {
+        dynamicTasks.push({
+          id: 'task-web-orders',
+          title: `Review pending online orders (${metrics.onlineOrdersPending} awaiting action)`,
+          checked: false,
+          isUrgent: true,
+        });
+      }
+      if (metrics.todayBillsCount > 0) {
+        dynamicTasks.push({
+          id: 'task-shift-close',
+          title: `Perform shift close check on ${metrics.todayBillsCount} completed bill${metrics.todayBillsCount === 1 ? '' : 's'}`,
+          checked: false,
+          isUrgent: false,
+        });
+      }
+      setTasks(dynamicTasks);
     } catch (err) {
       console.error('Error fetching dashboard statistics:', err);
     } finally {
@@ -258,7 +261,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
           title={timeRange === 'today' ? "Today's Sales" : "Sales Revenue"}
           prefix="₹"
           value={activeData.todaySales}
-          trend={timeRange === 'today' ? { value: '18.6%', isPositive: true, comparisonText: 'vs yesterday' } : undefined}
+          subValue={`${activeData.todayBillsCount} bill${activeData.todayBillsCount === 1 ? '' : 's'} in period`}
         />
         <KpiCard
           title="Cash Received"
@@ -277,7 +280,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
         <KpiCard
           title={`${t('glossary.youllGive', "You'll give")} (Payables)`}
           prefix="₹"
-          value={activeData.receivables > 0 ? Math.round(activeData.receivables * 0.45) : 0}
+          value={activeData.payables}
           statusVariant="critical"
           actionLabel="View Suppliers"
           onAction={() => onNavigate('suppliers')}
@@ -291,8 +294,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
         />
         <KpiCard
           title={t('glossary.websiteOrder', 'Orders to Confirm')}
-          value={0}
-          subValue="Web orders wait here"
+          value={activeData.onlineOrdersPending}
+          subValue={activeData.onlineOrdersPending > 0 ? 'Awaiting showroom review' : 'No pending web orders'}
           actionLabel="View Orders"
           onAction={() => onNavigate('ecommerce')}
         />
@@ -338,37 +341,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
 
         <div
           className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center justify-between cursor-pointer hover:bg-blue-100/60 transition-all group"
-          onClick={() => onNavigate('pos')}
+          onClick={() => onNavigate('ecommerce')}
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-700 flex items-center justify-center font-bold">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs font-bold text-blue-900">E-Commerce Gateway Active</span>
-              <p className="text-[11px] text-blue-700">All storefront APIs healthy • 0 queue holds</p>
+              <span className="text-xs font-bold text-blue-900">
+                {activeData.onlineOrdersPending} Online Order{activeData.onlineOrdersPending === 1 ? '' : 's'} Pending
+              </span>
+              <p className="text-[11px] text-blue-700">
+                {activeData.onlineOrdersPending > 0
+                  ? 'Pending confirmation & stock allocation'
+                  : 'All online orders processed'}
+              </p>
             </div>
           </div>
           <span className="text-xs font-bold text-blue-800 group-hover:underline flex items-center gap-1">
-            Open POS &rarr;
+            View Orders &rarr;
           </span>
         </div>
       </div>
 
       {/* Main Grid: Sales Overview & Analytics Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sales Trend Simulation (8 Cols) */}
+        {/* Sales Trend (8 Cols) */}
         <div className="lg:col-span-8 bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-xs flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#F1F5F9]">
             <div>
-              <h3 className="text-sm font-bold text-[#0B1F33]">Sales Trend & Hourly Velocity</h3>
-              <p className="text-xs text-[#64748B]">Revenue comparison across operating shifts</p>
+              <h3 className="text-sm font-bold text-[#0B1F33]">Sales Trend &amp; Hourly Velocity</h3>
+              <p className="text-xs text-[#64748B]">Revenue comparison across operating hours</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#0D5C63] bg-[#E6F4F1] px-2.5 py-1 rounded-lg">
-                Peak Hours: 11 AM - 1 PM & 5 PM - 6 PM
-              </span>
-            </div>
+            {(() => {
+              const peakSlot = activeData.salesTrend.reduce(
+                (best, cur) => (cur.amount > best.amount ? cur : best),
+                { time: '', amount: 0, count: 0 }
+              );
+              return (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[#0D5C63] bg-[#E6F4F1] px-2.5 py-1 rounded-lg">
+                    {peakSlot.amount > 0
+                      ? `Peak Hour: ${peakSlot.time} (₹${formatCurrency(peakSlot.amount)})`
+                      : 'No sales recorded in period'}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Graphical Representation Area */}
@@ -476,19 +495,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
             </div>
 
             <div className="mt-3 space-y-2">
-              {tasks.map((task) => (
-                <label key={task.id} className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-[#F8FAFC] cursor-pointer text-xs">
-                  <input 
-                    type="checkbox" 
-                    checked={task.checked}
-                    onChange={() => toggleTask(task.id)}
-                    className="mt-0.5 rounded text-[#0D5C63] focus:ring-[#0D5C63] cursor-pointer" 
-                  />
-                  <span className={`text-[#0B1F33] leading-snug ${task.checked ? 'line-through text-[#94A3B8]' : ''} ${task.isUrgent && !task.checked ? 'font-semibold text-amber-800' : ''}`}>
-                    {task.title}
-                  </span>
-                </label>
-              ))}
+              {tasks.length === 0 ? (
+                <div className="py-6 text-center text-xs text-[#64748B]">
+                  All clear — no pending operational alerts in Firestore.
+                </div>
+              ) : (
+                tasks.map((task) => (
+                  <label key={task.id} className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-[#F8FAFC] cursor-pointer text-xs">
+                    <input 
+                      type="checkbox" 
+                      checked={task.checked}
+                      onChange={() => toggleTask(task.id)}
+                      className="mt-0.5 rounded text-[#0D5C63] focus:ring-[#0D5C63] cursor-pointer" 
+                    />
+                    <span className={`text-[#0B1F33] leading-snug ${task.checked ? 'line-through text-[#94A3B8]' : ''} ${task.isUrgent && !task.checked ? 'font-semibold text-amber-800' : ''}`}>
+                      {task.title}
+                    </span>
+                  </label>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -512,31 +537,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
           </div>
 
           <div className="divide-y divide-[#F1F5F9] mt-2">
-            {activeData.topSellingMedicines.map((item, i) => (
-              <div key={i} className="py-2.5 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <ProductImage
-                    size="sm"
-                    src={item.imageUrl}
-                    dosageForm={item.dosage}
-                    schedule={item.schedule}
-                    alt={item.name}
-                  />
-                  <div>
-                    <h5 className="text-xs font-bold text-[#0B1F33]">{item.name}</h5>
-                    <p className="text-[11px] text-[#64748B]">{item.qtySold} units sold in period</p>
+            {activeData.topSellingMedicines.length === 0 ? (
+              <div className="py-8 text-center text-xs text-[#64748B]">
+                No product sales recorded in the selected period yet.
+              </div>
+            ) : (
+              activeData.topSellingMedicines.map((item, i) => (
+                <div key={item.productId || i} className="py-2.5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <ProductImage
+                      size="sm"
+                      src={item.imageUrl}
+                      dosageForm={item.dosage}
+                      schedule={item.schedule}
+                      alt={item.name}
+                    />
+                    <div>
+                      <h5 className="text-xs font-bold text-[#0B1F33]">{item.name}</h5>
+                      <p className="text-[11px] text-[#64748B]">{item.qtySold} units sold in period</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-extrabold text-[#0B1F33] font-mono-num block">
+                      ₹ {formatCurrency(item.sales)}
+                    </span>
+                    {item.marginPercent > 0 && (
+                      <span className="text-[10px] font-bold text-[#15803D] bg-emerald-50 px-1.5 py-0.2 rounded">
+                        {item.marginPercent}% margin
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-extrabold text-[#0B1F33] font-mono-num block">
-                    ₹ {formatCurrency(item.sales)}
-                  </span>
-                  <span className="text-[10px] font-bold text-[#15803D] bg-emerald-50 px-1.5 py-0.2 rounded">
-                    {item.marginPercent}% margin
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

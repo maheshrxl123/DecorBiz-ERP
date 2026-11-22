@@ -169,6 +169,33 @@ export const organizationService = {
       });
     }
 
+    // 5. Publish public showroom profile for Storefront BusinessCard (real Firestore data)
+    const businessProfileRef = doc(db, 'business', 'profile');
+    const addressParts = [
+      params.street?.trim(),
+      params.city?.trim(),
+      params.state?.trim(),
+    ].filter(Boolean);
+    batch.set(
+      businessProfileRef,
+      {
+        organizationId: orgId,
+        storeId,
+        tradeName: params.orgName.trim(),
+        legalName: params.legalName?.trim() || params.orgName.trim(),
+        showroomName: params.mainStoreName.trim(),
+        address: addressParts.join(', '),
+        city: params.city?.trim() || '',
+        state: params.state?.trim() || '',
+        pincode: params.postalCode?.trim() || '',
+        phone: params.phone?.trim() || '',
+        email: params.email?.trim() || params.ownerEmail,
+        gstin: params.gstin?.trim() || '',
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
     // Commit atomic batch
     await batch.commit();
 

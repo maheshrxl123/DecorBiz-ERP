@@ -387,7 +387,7 @@ export const BatchLedgerPanel: React.FC = () => {
                         <span className="text-[10px] text-[#64748B] font-mono">{b.productSku}</span>
                       </td>
                       <td className="py-3.5 px-3">
-                        <span className="text-xs text-[#475569]">{b.toneCode || 'Std'} / {b.caliberCode || 'C-1'}</span>
+                        <span className="text-xs text-[#475569]">{b.toneCode || '—'} / {b.caliberCode || '—'}</span>
                       </td>
                       <td className="py-3.5 px-3">
                         <Badge status={b.status} size="sm" />
@@ -409,7 +409,7 @@ export const BatchLedgerPanel: React.FC = () => {
                         ₹{safeToFixed(b.purchasePrice)}
                       </td>
                       <td className="py-3.5 px-3">
-                        <span className="font-semibold text-[#475569]">{b.storageLocation || 'Yard Bay A-01'}</span>
+                        <span className="font-semibold text-[#475569]">{b.storageLocation || '—'}</span>
                       </td>
                       <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1.5">

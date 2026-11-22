@@ -28,13 +28,7 @@ export class RazorpayPaymentsAdapter implements PaymentsAdapter {
     const safeReceipt = String(receiptId || `rcpt_${Date.now()}`).trim().slice(0, 40);
 
     if (!this.keyId || !this.keySecret) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('Payment gateway credentials are not configured on the server.');
-      }
-      return {
-        orderId: `order_dev_${Date.now()}`,
-        amount: numericAmount,
-      };
+      throw new Error('Payment gateway credentials are not configured on the server.');
     }
 
     const auth = Buffer.from(`${this.keyId}:${this.keySecret}`).toString('base64');

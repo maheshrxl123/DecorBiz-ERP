@@ -120,9 +120,9 @@ export const ShadeVelocityMatrix: React.FC<ShadeVelocityMatrixProps> = ({ items 
                   </td>
                   <td className="py-3 px-4">
                     <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
-                      {item.shadeNumber || 'STD-01'}
+                      {item.shadeNumber || '—'}
                     </span>
-                    <span className="text-[10px] text-slate-500 ml-2">Tone: {item.toneCode || 'T1'}</span>
+                    <span className="text-[10px] text-slate-500 ml-2">Tone: {item.toneCode || '—'}</span>
                   </td>
                   <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
                     {item.boxesSold.toLocaleString('en-IN')}

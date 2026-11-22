@@ -15,8 +15,8 @@ export const PaymentReminderDrawer: React.FC<PaymentReminderDrawerProps> = ({
   isOpen,
   onClose,
   summary,
-  showroomName = 'Royal Ceramics & Tiles',
-  upiId = 'royalceramics@icici',
+  showroomName = '',
+  upiId = '',
 }) => {
   const [messageText, setMessageText] = useState('');
   const [copied, setCopied] = useState(false);

@@ -20,9 +20,9 @@ export function CreditNotePrintModal({
   onClose,
   creditNote,
   salesReturn,
-  storeName = 'Vetrify Branch',
-  storeGstin = '36ABCDE1234F1Z5',
-  storeAddress = '12-4-567, Healthcare Plaza, Jubilee Hills, Hyderabad, Telangana',
+  storeName = '',
+  storeGstin = '',
+  storeAddress = '',
 }: CreditNotePrintModalProps) {
   if (!creditNote) return null;
 
