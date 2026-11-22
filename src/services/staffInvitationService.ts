@@ -532,9 +532,15 @@ export const staffInvitationService = {
 
     await batch.commit();
 
-    // 3. Update global user profile with primaryOrganizationId preference
+    // 3. Create or update global user profile with primaryOrganizationId preference
     try {
-      await userService.updateUserProfile(user.uid, { primaryOrganizationId: orgId });
+      await userService.createUserProfile(user.uid, {
+        email: userEmailClean,
+        displayName: staffData.displayName,
+        phoneNumber: inv.phone || null,
+        accountType: 'staff',
+        primaryOrganizationId: orgId,
+      });
     } catch (e) {
       console.warn('Profile preference update note:', e);
     }

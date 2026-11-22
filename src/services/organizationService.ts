@@ -145,18 +145,29 @@ export const organizationService = {
 
     // 4. Update UI workspace hint on root user (Zero authorization authority)
     const userDocRef = doc(db, 'users', params.ownerUid);
-    batch.set(
-      userDocRef,
-      {
+    const existingUserSnap = await getDoc(userDocRef);
+    if (existingUserSnap.exists()) {
+      batch.update(userDocRef, {
+        displayName: params.ownerName,
+        primaryOrganizationId: orgId,
+        updatedAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
+      });
+    } else {
+      batch.set(userDocRef, {
         uid: params.ownerUid,
         email: params.ownerEmail,
         displayName: params.ownerName,
+        photoURL: null,
+        phoneNumber: params.phone?.trim() || null,
+        accountType: 'staff',
         primaryOrganizationId: orgId,
         status: 'active',
+        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+        lastLoginAt: serverTimestamp(),
+      });
+    }
 
     // Commit atomic batch
     await batch.commit();

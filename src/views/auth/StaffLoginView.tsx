@@ -50,7 +50,8 @@ export const StaffLoginView: React.FC = () => {
     setIsSubmitting(true);
     try {
       await signIn({ email: email.trim(), password });
-      window.location.href = '/erp';
+      window.history.pushState({}, '', '/erp');
+      window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (err: any) {
       setLocalError(err.message || 'Invalid email or password');
     } finally {

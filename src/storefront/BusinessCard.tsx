@@ -1,25 +1,85 @@
-import React from 'react';
-import { MapPin, Phone, Mail, Clock, ShieldCheck, ArrowRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { MapPin, Phone, Mail, ShieldCheck, LogOut, User } from 'lucide-react';
 import { APP_CONFIG } from '../../config/app.config';
 import { DecorBizLogo } from '../design/DecorBizLogo';
-import { t } from '../i18n';
+import { useAuth } from '../auth/AuthProvider';
+import {
+  customerAccountService,
+  type CustomerAccountProfile,
+} from '../services/customerAccountService';
 
 export const BusinessCard: React.FC = () => {
   const business = APP_CONFIG.placeholderBusiness;
+  const { user, isAuthenticated, signOut } = useAuth();
+  const [customerProfile, setCustomerProfile] = useState<CustomerAccountProfile | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!isAuthenticated || !user?.uid) {
+      setCustomerProfile(null);
+      return;
+    }
+
+    customerAccountService
+      .getCustomerAccount(user.uid)
+      .then((profile) => {
+        if (active) setCustomerProfile(profile);
+      })
+      .catch((err) => {
+        console.warn('Could not load customer account profile:', err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, user?.uid]);
 
   return (
     <div className="min-h-screen bg-[#F6F3EE] flex flex-col justify-between selection:bg-[#1F4D3A]/20 selection:text-[#1F4D3A]">
       {/* Public Header */}
       <header className="bg-white border-b border-[#E7E5E4] px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <DecorBizLogo size="md" showTagline={true} />
           <div className="flex items-center gap-4">
-            <a
-              href="/account/login"
-              className="text-xs font-semibold text-[#1F4D3A] hover:underline"
-            >
-              Customer Sign In
-            </a>
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2 text-right">
+                  <div className="w-7 h-7 rounded-full bg-[#1F4D3A]/10 text-[#1F4D3A] flex items-center justify-center">
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="leading-tight">
+                    <p className="text-xs font-semibold text-[#1C1917]">
+                      {customerProfile?.name || user.displayName || user.email}
+                    </p>
+                    <p className="text-[11px] text-[#57534E] capitalize">
+                      {customerProfile
+                        ? `${customerProfile.customerType} · ${customerProfile.approvalStatus}`
+                        : user.email}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E7E5E4] bg-white hover:bg-[#F6F3EE] text-xs font-semibold text-[#1C1917] transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-[#57534E]" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            ) : (
+              <a
+                href="/account/login"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.history.pushState({}, '', '/account/login');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="text-xs font-semibold text-[#1F4D3A] hover:underline"
+              >
+                Customer Sign In
+              </a>
+            )}
           </div>
         </div>
       </header>

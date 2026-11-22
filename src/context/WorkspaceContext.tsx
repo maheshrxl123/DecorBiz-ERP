@@ -147,7 +147,7 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     return Array.from(foundMap.values());
   };
 
-  const loadWorkspace = useCallback(async () => {
+  const loadWorkspace = useCallback(async (orgIdOverride?: string) => {
     if (!user || !isAuthenticated || authStatus !== 'authenticated') {
       setFirestoreUser(null);
       setOrganization(null);
@@ -174,29 +174,20 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       let profile: FirestoreUser | null = null;
       try {
         profile = await userService.getUserProfile(user.uid);
-      } catch (profileFetchErr) {
+      } catch (profileFetchErr: any) {
+        if (profileFetchErr?.code === 'permission-denied') {
+          throw profileFetchErr;
+        }
         console.warn('Profile fetch warning:', profileFetchErr);
       }
 
       if (!profile) {
-        try {
-          profile = await userService.createUserProfile(user.uid, {
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            primaryOrganizationId: null,
-          });
-        } catch (profileCreateErr) {
-          console.warn('Profile create fallback:', profileCreateErr);
-          profile = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            primaryOrganizationId: null,
-            status: 'active',
-          };
-        }
+        profile = await userService.createUserProfile(user.uid, {
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          primaryOrganizationId: null,
+        });
       }
       setFirestoreUser(profile);
 
@@ -238,9 +229,10 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       // 3. Determine selected active organization
       let selectedMembership: AvailableMembership | undefined;
 
-      // Priority A: Override selection (if user manually switched)
-      if (selectedOrgIdOverride) {
-        selectedMembership = activeMemberships.find((m) => m.organization.id === selectedOrgIdOverride);
+      // Priority A: Override selection (explicit parameter or user-selected org)
+      const effectiveOrgOverride = orgIdOverride || selectedOrgIdOverride;
+      if (effectiveOrgOverride) {
+        selectedMembership = activeMemberships.find((m) => m.organization.id === effectiveOrgOverride);
       }
 
       // Priority B: Profile primaryOrganizationId preference
@@ -288,8 +280,15 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     } catch (err: any) {
       console.error('Workspace load error:', err);
-      setWorkspaceState('invalid-membership');
-      setError('An error occurred while verifying your Vetrify business workspace access.');
+      const isPermissionDenied =
+        err?.code === 'permission-denied' ||
+        err?.message?.toLowerCase().includes('missing or insufficient permissions');
+      setWorkspaceState(isPermissionDenied ? 'error' : 'invalid-membership');
+      setError(
+        isPermissionDenied
+          ? 'Cloud Firestore permission denied while reading or initializing your user profile. Please publish the latest firestore.rules in Firebase Console -> Firestore Database -> Rules.'
+          : 'An error occurred while verifying your DecorBiz business workspace access.'
+      );
     }
   }, [user, isAuthenticated, authStatus, selectedOrgIdOverride]);
 
@@ -343,11 +342,11 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   /**
-   * Create a new Vetrify organization workspace
+   * Create a new DecorBiz organization workspace
    */
   const createWorkspace = async (params: CreateWorkspaceParams) => {
     if (!user) {
-      throw new Error('You must be signed in to create a Vetrify workspace.');
+      throw new Error('You must be signed in to create a DecorBiz workspace.');
     }
 
     if (isProvisioningRef.current) {
@@ -388,14 +387,14 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
 
       setSelectedOrgIdOverride(result.organization.id);
       isProvisioningRef.current = false;
-      await loadWorkspace();
+      await loadWorkspace(result.organization.id);
     } catch (err: any) {
       isProvisioningRef.current = false;
       console.error('Workspace provisioning error:', err);
 
-      let friendlyMessage = 'Unable to create your Vetrify workspace right now. Please check your connection and try again.';
+      let friendlyMessage = 'Unable to create your DecorBiz workspace right now. Please check your connection and try again.';
       if (err?.code === 'permission-denied' || err?.message?.includes('permission')) {
-        friendlyMessage = 'Permission denied while creating workspace. Please ensure your session is active and try again.';
+        friendlyMessage = 'Permission denied while creating workspace. Please publish the latest firestore.rules in Firebase Console and try again.';
       }
 
       setError(friendlyMessage);

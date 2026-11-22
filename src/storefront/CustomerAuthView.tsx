@@ -2,11 +2,16 @@ import React, { useState } from 'react';
 import { Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { DecorBizLogo } from '../design/DecorBizLogo';
+import {
+  customerAccountService,
+  type CustomerAccountType,
+} from '../services/customerAccountService';
 
 /**
  * Customer Authentication View (/account/login)
  * PRD Section 11.4
- * Collects name, email, password, phone, customer type (retail, contractor, plumber, architect, mason, dealer).
+ * Collects name, email, password, phone, customer type (retail, contractor, plumber, architect, mason, dealer)
+ * and persists the customer profile in Cloud Firestore (/customers/{uid} and /users/{uid}).
  */
 export const CustomerAuthView: React.FC = () => {
   const { signIn, signUp, error, clearError } = useAuth();
@@ -14,7 +19,7 @@ export const CustomerAuthView: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [customerType, setCustomerType] = useState('retail');
+  const [customerType, setCustomerType] = useState<CustomerAccountType>('retail');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,21 +30,56 @@ export const CustomerAuthView: React.FC = () => {
     clearError();
     setLocalError(null);
 
-    if (!email.trim() || !password) {
+    const trimmedEmail = email.trim();
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+
+    if (!trimmedEmail || !password) {
       setLocalError('Please complete all required fields.');
+      return;
+    }
+
+    if (isRegister && !trimmedName) {
+      setLocalError('Please enter your full name.');
       return;
     }
 
     setIsSubmitting(true);
     try {
       if (isRegister) {
-        await signUp({ email: email.trim(), password, displayName: name.trim() });
+        const authUser = await signUp({
+          email: trimmedEmail,
+          password,
+          displayName: trimmedName,
+        });
+
+        await customerAccountService.syncCustomerAccountOnAuth({
+          uid: authUser.uid,
+          email: authUser.email || trimmedEmail,
+          name: trimmedName,
+          phone: trimmedPhone,
+          customerType,
+          isRegistration: true,
+        });
       } else {
-        await signIn({ email: email.trim(), password });
+        const authUser = await signIn({
+          email: trimmedEmail,
+          password,
+        });
+
+        // Ensures existing Firebase Auth-only customer accounts are backfilled into Cloud Firestore
+        await customerAccountService.syncCustomerAccountOnAuth({
+          uid: authUser.uid,
+          email: authUser.email || trimmedEmail,
+          name: authUser.displayName,
+          isRegistration: false,
+        });
       }
-      window.location.href = '/';
+
+      window.history.pushState({}, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (err: any) {
-      setLocalError(err.message || 'Authentication failed');
+      setLocalError(err?.message || 'Authentication failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -116,7 +156,7 @@ export const CustomerAuthView: React.FC = () => {
                   </label>
                   <select
                     value={customerType}
-                    onChange={(e) => setCustomerType(e.target.value)}
+                    onChange={(e) => setCustomerType(e.target.value as CustomerAccountType)}
                     className="w-full px-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1F4D3A]/20 focus:border-[#1F4D3A]"
                   >
                     <option value="retail">Individual / Homeowner (Retail)</option>

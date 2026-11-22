@@ -143,9 +143,9 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
           displayName: user.displayName || undefined,
         }
       });
-      // Clean up URL and reload to trigger workspace resolution
-      window.history.replaceState({}, document.title, '/');
-      window.location.reload();
+      // Clean up invite query params and navigate to the ERP workspace
+      window.history.replaceState({}, document.title, '/erp');
+      window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to accept invitation.');
       setIsSubmitting(false);
@@ -202,8 +202,8 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
             <div className="pt-4 flex flex-col gap-3">
               <button
                 onClick={() => {
-                  window.history.replaceState({}, document.title, '/');
-                  window.location.reload();
+                  window.history.replaceState({}, document.title, '/erp');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
                 }}
                 className="w-full py-2.5 rounded-xl border border-[#CBD5E1] font-bold text-[#0B1F33] hover:bg-[#F8FAFC]"
               >
@@ -227,8 +227,8 @@ export const AcceptInvitationView: React.FC<AcceptInvitationViewProps> = ({ invi
   if (!invitation) return null;
 
   const handleGoToDashboard = () => {
-    window.history.replaceState({}, document.title, window.location.pathname);
-    window.location.reload();
+    window.history.replaceState({}, document.title, '/erp');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   // Status: Accepted

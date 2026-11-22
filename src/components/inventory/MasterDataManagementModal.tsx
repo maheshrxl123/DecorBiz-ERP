@@ -7,6 +7,7 @@ import { Tabs } from '../ui/Tabs';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useAuth } from '../../auth/AuthProvider';
 import { useToast } from '../../context/ToastContext';
+import { useConfirmation } from '../../context/ConfirmationContext';
 import { getCategories, createCategory, deleteCategory } from '../../services/categoryService';
 import { getManufacturers, createManufacturer, deleteManufacturer } from '../../services/manufacturerService';
 import { getUnits, createUnit, deleteUnit } from '../../services/unitService';
@@ -27,6 +28,7 @@ export const MasterDataManagementModal: React.FC<MasterDataManagementModalProps>
   const { organization } = useWorkspace();
   const { user } = useAuth();
   const { success, error } = useToast();
+  const { confirm } = useConfirmation();
 
   const [activeTab, setActiveTab] = useState<'categories' | 'manufacturers' | 'units' | 'taxes'>('categories');
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -100,7 +102,14 @@ export const MasterDataManagementModal: React.FC<MasterDataManagementModalProps>
   };
 
   const handleDeleteCategory = async (catId: string, catName: string) => {
-    if (!organization || !window.confirm(`Delete category "${catName}"?`)) return;
+    if (!organization) return;
+    const confirmed = await confirm({
+      title: 'Delete Category',
+      description: `Are you sure you want to delete category "${catName}"?`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteCategory(organization.id, catId);
       setCategories((prev) => prev.filter((c) => c.id !== catId));
@@ -136,7 +145,14 @@ export const MasterDataManagementModal: React.FC<MasterDataManagementModalProps>
   };
 
   const handleDeleteManufacturer = async (mfrId: string, mfrName: string) => {
-    if (!organization || !window.confirm(`Delete brand "${mfrName}"?`)) return;
+    if (!organization) return;
+    const confirmed = await confirm({
+      title: 'Delete Brand',
+      description: `Are you sure you want to delete brand "${mfrName}"?`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteManufacturer(organization.id, mfrId);
       setManufacturers((prev) => prev.filter((m) => m.id !== mfrId));
@@ -170,7 +186,14 @@ export const MasterDataManagementModal: React.FC<MasterDataManagementModalProps>
   };
 
   const handleDeleteUnit = async (unitId: string, unitName: string) => {
-    if (!organization || !window.confirm(`Delete unit "${unitName}"?`)) return;
+    if (!organization) return;
+    const confirmed = await confirm({
+      title: 'Delete Unit',
+      description: `Are you sure you want to delete unit "${unitName}"?`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteUnit(organization.id, unitId);
       setUnits((prev) => prev.filter((u) => u.id !== unitId));

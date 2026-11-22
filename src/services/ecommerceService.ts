@@ -25,6 +25,7 @@ import {
 import { PharmacyBatch } from '../types/batch';
 import { validateCustomerAddress, validateOnlineOrder, validateDeliveryPartner, validateDeliveryRun } from '../validators/ecommerceValidators';
 import { logAuditEvent } from './auditService';
+import { sanitizeFirestorePayload } from '../lib/firebase/queryUtils';
 
 enum OperationType {
   CREATE = 'create',
@@ -73,14 +74,14 @@ export const ecommerceService = {
       const addressId = addressData.id || doc(collection(db, 'organizations', orgId, 'customerAddresses')).id;
       const ref = doc(db, 'organizations', orgId, 'customerAddresses', addressId);
 
-      const payload = {
+      const payload = sanitizeFirestorePayload({
         ...addressData,
         id: addressId,
         organizationId: orgId,
         customerId,
         updatedAt: serverTimestamp(),
         createdAt: addressData.createdAt || serverTimestamp()
-      };
+      });
 
       await setDoc(ref, payload, { merge: true });
       return addressId;
@@ -330,7 +331,7 @@ export const ecommerceService = {
         }
 
         const orderRef = doc(db, 'organizations', orgId, 'onlineOrders', orderId);
-        tx.set(orderRef, orderPayload);
+        tx.set(orderRef, sanitizeFirestorePayload(orderPayload));
       });
 
       await logAuditEvent(orgId, {
@@ -406,14 +407,14 @@ export const ecommerceService = {
     try {
       const partnerId = partnerData.id || doc(collection(db, 'organizations', orgId, 'deliveryPartners')).id;
       const ref = doc(db, 'organizations', orgId, 'deliveryPartners', partnerId);
-      const payload = {
+      const payload = sanitizeFirestorePayload({
         ...partnerData,
         id: partnerId,
         organizationId: orgId,
         status: partnerData.status || 'available',
         updatedAt: serverTimestamp(),
         createdAt: partnerData.createdAt || serverTimestamp()
-      };
+      });
       await setDoc(ref, payload, { merge: true });
       return partnerId;
     } catch (error) {

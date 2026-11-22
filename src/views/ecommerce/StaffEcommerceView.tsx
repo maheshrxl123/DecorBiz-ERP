@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { useToast } from '../../context/ToastContext';
 import { ecommerceService } from '../../services/ecommerceService';
 import { OnlineOrder, DeliveryPartner } from '../../types/ecommerce';
 import { 
@@ -9,6 +10,7 @@ import {
 
 export const StaffEcommerceView: React.FC = () => {
   const { organization, currentStore, firestoreUser, currentStaff } = useWorkspace();
+  const { success, error, warning } = useToast();
   const [orders, setOrders] = useState<OnlineOrder[]>([]);
   const [partners, setPartners] = useState<DeliveryPartner[]>([]);
   const [activeTab, setActiveTab] = useState<'all' | 'pending_review' | 'picking' | 'ready_dispatch' | 'out_for_delivery' | 'completed'>('all');
@@ -47,15 +49,15 @@ export const StaffEcommerceView: React.FC = () => {
     try {
       await ecommerceService.updateOrderStatus(orgId, orderId, status, staff);
       loadData();
-      alert(`Order status updated to ${status}`);
+      success(`Order status updated to ${String(status).replace(/_/g, ' ')}.`, 'Status Updated');
     } catch (err: any) {
-      alert('Failed to update status: ' + err.message);
+      error(err?.message || 'Failed to update status.', 'Update Failed');
     }
   };
 
   const handleAssignRider = async (orderId: string) => {
     if (!selectedPartnerId) {
-      alert('Please select a delivery partner.');
+      warning('Please select a delivery partner before assigning.', 'Select Delivery Partner');
       return;
     }
     const partner = partners.find(p => p.id === selectedPartnerId);
@@ -63,9 +65,9 @@ export const StaffEcommerceView: React.FC = () => {
     try {
       await ecommerceService.assignOrderToDeliveryPartner(orgId, orderId, partner.id, partner.name, staff);
       loadData();
-      alert(`Order assigned to delivery rider ${partner.name}`);
+      success(`Order assigned to delivery rider ${partner.name}.`, 'Rider Assigned');
     } catch (err: any) {
-      alert('Failed to assign delivery partner: ' + err.message);
+      error(err?.message || 'Failed to assign delivery partner.', 'Assignment Failed');
     }
   };
 
@@ -73,9 +75,9 @@ export const StaffEcommerceView: React.FC = () => {
     try {
       await ecommerceService.dispatchOrder(orgId, orderId, staff);
       loadData();
-      alert('Order dispatched out for delivery!');
+      success('Order dispatched out for delivery.', 'Order Dispatched');
     } catch (err: any) {
-      alert('Dispatch failed: ' + err.message);
+      error(err?.message || 'Dispatch failed.', 'Dispatch Failed');
     }
   };
 
@@ -83,9 +85,9 @@ export const StaffEcommerceView: React.FC = () => {
     try {
       await ecommerceService.completeDelivery(orgId, orderId, staff);
       loadData();
-      alert('Order marked as successfully delivered!');
+      success('Order marked as successfully delivered.', 'Delivery Completed');
     } catch (err: any) {
-      alert('Failed to complete delivery: ' + err.message);
+      error(err?.message || 'Failed to complete delivery.', 'Completion Failed');
     }
   };
 

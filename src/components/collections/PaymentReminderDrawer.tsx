@@ -18,8 +18,6 @@ export const PaymentReminderDrawer: React.FC<PaymentReminderDrawerProps> = ({
   showroomName = 'Royal Ceramics & Tiles',
   upiId = 'royalceramics@icici',
 }) => {
-  if (!isOpen || !summary) return null;
-
   const [messageText, setMessageText] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -30,18 +28,17 @@ export const PaymentReminderDrawer: React.FC<PaymentReminderDrawerProps> = ({
     }
   }, [summary, showroomName, upiId]);
 
+  if (!isOpen || !summary) return null;
+
   const handleCopy = () => {
     navigator.clipboard.writeText(messageText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleOpenWhatsApp = () => {
-    const rawPhone = (summary.phone || '').replace(/[^0-9]/g, '');
-    const cleanPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
-    window.open(url, '_blank');
-  };
+  const rawPhone = (summary.phone || '').replace(/[^0-9]/g, '');
+  const cleanPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in">
@@ -101,14 +98,15 @@ export const PaymentReminderDrawer: React.FC<PaymentReminderDrawerProps> = ({
               {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
               <span>{copied ? 'Copied!' : 'Copy Text'}</span>
             </button>
-            <button
-              type="button"
-              onClick={handleOpenWhatsApp}
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
             >
               <ExternalLink className="w-4 h-4" />
               <span>Send via WhatsApp</span>
-            </button>
+            </a>
           </div>
         </div>
       </div>

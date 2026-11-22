@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import { PaymentsAdapter } from '../interfaces';
 
+const ALLOWED_CURRENCIES = new Set(['INR']);
+
 export class RazorpayPaymentsAdapter implements PaymentsAdapter {
   private keyId: string;
   private keySecret: string;
@@ -10,12 +12,28 @@ export class RazorpayPaymentsAdapter implements PaymentsAdapter {
     this.keySecret = process.env.RAZORPAY_KEY_SECRET || '';
   }
 
-  async createOrder(amount: number, currency: string = 'INR', receiptId: string): Promise<{ orderId: string; amount: number }> {
+  async createOrder(
+    amount: number,
+    currency: string = 'INR',
+    receiptId: string
+  ): Promise<{ orderId: string; amount: number }> {
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0 || numericAmount > 100_000_000) {
+      throw new Error('Invalid payment amount: must be a positive number.');
+    }
+    const normalizedCurrency = String(currency || 'INR').toUpperCase();
+    if (!ALLOWED_CURRENCIES.has(normalizedCurrency)) {
+      throw new Error(`Unsupported currency: ${normalizedCurrency}`);
+    }
+    const safeReceipt = String(receiptId || `rcpt_${Date.now()}`).trim().slice(0, 40);
+
     if (!this.keyId || !this.keySecret) {
-      // Return simulated order id for development / unconfigured state
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Payment gateway credentials are not configured on the server.');
+      }
       return {
-        orderId: `order_mock_${Date.now()}`,
-        amount,
+        orderId: `order_dev_${Date.now()}`,
+        amount: numericAmount,
       };
     }
 
@@ -27,9 +45,9 @@ export class RazorpayPaymentsAdapter implements PaymentsAdapter {
         Authorization: `Basic ${auth}`,
       },
       body: JSON.stringify({
-        amount: Math.round(amount * 100), // In paise
-        currency,
-        receipt: receiptId,
+        amount: Math.round(numericAmount * 100), // In paise
+        currency: normalizedCurrency,
+        receipt: safeReceipt,
       }),
     });
 
@@ -45,16 +63,27 @@ export class RazorpayPaymentsAdapter implements PaymentsAdapter {
     };
   }
 
-  async verifyWebhook(signature: string, payload: any): Promise<boolean> {
+  async verifyWebhook(signature: string, payload: string | Buffer | Record<string, unknown>): Promise<boolean> {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || this.keySecret;
-    if (!webhookSecret) return false;
+    if (!webhookSecret || !signature || typeof signature !== 'string') {
+      return false;
+    }
 
-    const bodyString = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const bodyBuffer = Buffer.isBuffer(payload)
+      ? payload
+      : Buffer.from(typeof payload === 'string' ? payload : JSON.stringify(payload), 'utf8');
+
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(bodyString)
+      .update(bodyBuffer)
       .digest('hex');
 
-    return expectedSignature === signature;
+    const sigBuf = Buffer.from(signature, 'utf8');
+    const expectedBuf = Buffer.from(expectedSignature, 'utf8');
+    if (sigBuf.length !== expectedBuf.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(sigBuf, expectedBuf);
   }
 }

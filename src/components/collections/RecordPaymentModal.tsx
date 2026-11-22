@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Check, Banknote, Landmark, Smartphone, FileCheck } from 'lucide-react';
 import { CustomerAgingSummary, PaymentReceiptMode, PaymentReceiptPayload } from '../../types/collections';
+import { useToast } from '../../context/ToastContext';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -15,9 +16,8 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   summary,
   onSubmit,
 }) => {
-  if (!isOpen || !summary) return null;
-
-  const [amount, setAmount] = useState<number>(summary.currentOutstanding);
+  const { warning, error: showError } = useToast();
+  const [amount, setAmount] = useState<number>(summary?.currentOutstanding ?? 0);
   const [paymentMode, setPaymentMode] = useState<PaymentReceiptMode>('neft_rtgs');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [bankName, setBankName] = useState('');
@@ -26,12 +26,26 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (isOpen && summary) {
+      setAmount(summary.currentOutstanding);
+      setPaymentMode('neft_rtgs');
+      setReferenceNumber('');
+      setBankName('');
+      setChequeNumber('');
+      setClearingDate('');
+      setNotes('');
+    }
+  }, [isOpen, summary]);
+
+  if (!isOpen || !summary) return null;
+
   const remainingBalance = Math.max(0, summary.currentOutstanding - (amount || 0));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || amount <= 0) {
-      alert('Please enter a valid payment amount greater than zero.');
+      warning('Please enter a valid payment amount greater than zero.', 'Invalid Amount');
       return;
     }
 
@@ -49,7 +63,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      alert(err.message || 'Failed to record payment receipt');
+      showError(err?.message || 'Failed to record payment receipt', 'Receipt Failed');
     } finally {
       setIsSubmitting(false);
     }

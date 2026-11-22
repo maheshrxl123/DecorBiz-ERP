@@ -2,18 +2,89 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // =========================================================================
+    // Core Authentication & Identity Helpers
+    // =========================================================================
     function isAuthenticated() {
       return request.auth != null && request.auth.uid != null;
     }
 
-    function getStaffData() {
+    function isUser(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // =========================================================================
+    // Multi-Tenant Organization & Role Hierarchy Helpers
+    // =========================================================================
+    function roleRank(roleId) {
+      return roleId == 'owner' ? 6 :
+        roleId == 'admin' ? 5 :
+        roleId == 'manager' ? 4 :
+        (roleId == 'sales_staff' || roleId == 'pharmacist') ? 3 :
+        roleId == 'cashier' ? 2 :
+        roleId == 'staff' ? 1 : 0;
+    }
+
+    function orgExists(orgId) {
+      return exists(/databases/$(database)/documents/organizations/$(orgId));
+    }
+
+    function orgStaffDoc(orgId, uid) {
+      return get(/databases/$(database)/documents/organizations/$(orgId)/staff/$(uid));
+    }
+
+    function isOrgStaff(orgId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/organizations/$(orgId)/staff/$(request.auth.uid)) &&
+        orgStaffDoc(orgId, request.auth.uid).data.status == 'active';
+    }
+
+    function orgCallerRole(orgId) {
+      return orgStaffDoc(orgId, request.auth.uid).data.roleId;
+    }
+
+    function isOrgOwner(orgId) {
+      return isOrgStaff(orgId) && orgCallerRole(orgId) == 'owner';
+    }
+
+    function isOrgAdminOrOwner(orgId) {
+      return isOrgStaff(orgId) && (
+        orgCallerRole(orgId) == 'owner' ||
+        orgCallerRole(orgId) == 'admin'
+      );
+    }
+
+    function canAccessOrgStore(orgId, storeId) {
+      return isOrgStaff(orgId) && (
+        orgStaffDoc(orgId, request.auth.uid).data.allStoresAccess == true ||
+        (
+          storeId != null &&
+          orgStaffDoc(orgId, request.auth.uid).data.storeIds is list &&
+          storeId in orgStaffDoc(orgId, request.auth.uid).data.storeIds
+        )
+      );
+    }
+
+    function isOrgBootstrapOwner(orgId) {
+      return isAuthenticated() &&
+        !orgExists(orgId) &&
+        existsAfter(/databases/$(database)/documents/organizations/$(orgId)/staff/$(request.auth.uid)) &&
+        getAfter(/databases/$(database)/documents/organizations/$(orgId)/staff/$(request.auth.uid)).data.roleId == 'owner' &&
+        getAfter(/databases/$(database)/documents/organizations/$(orgId)/staff/$(request.auth.uid)).data.uid == request.auth.uid &&
+        getAfter(/databases/$(database)/documents/organizations/$(orgId)/staff/$(request.auth.uid)).data.organizationId == orgId;
+    }
+
+    // =========================================================================
+    // Single-Tenant / PRD v2 Claim & Legacy Staff Helpers
+    // =========================================================================
+    function getLegacyStaffData() {
       return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
     }
 
     function isStaff() {
       return isAuthenticated() && (
         (request.auth.token != null && request.auth.token.role in [
-          'owner', 'manager', 'cashier', 'storekeeper', 'accountant', 'viewer', 'website_manager', 'delivery_staff'
+          'owner', 'admin', 'manager', 'cashier', 'storekeeper', 'accountant', 'viewer', 'website_manager', 'delivery_staff', 'sales_staff'
         ]) ||
         exists(/databases/$(database)/documents/staff/$(request.auth.uid))
       );
@@ -22,7 +93,7 @@ service cloud.firestore {
     function currentRole() {
       return request.auth.token != null && request.auth.token.role != null ?
         request.auth.token.role :
-        (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) ? getStaffData().role : 'none');
+        (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) ? getLegacyStaffData().role : 'none');
     }
 
     function isOwner() {
@@ -30,12 +101,13 @@ service cloud.firestore {
     }
 
     function isManagerOrOwner() {
-      return isStaff() && (currentRole() == 'owner' || currentRole() == 'manager');
+      return isStaff() && (currentRole() == 'owner' || currentRole() == 'admin' || currentRole() == 'manager');
     }
 
     function canBill() {
       return isStaff() && (
         currentRole() == 'owner' ||
+        currentRole() == 'admin' ||
         currentRole() == 'manager' ||
         currentRole() == 'cashier' ||
         currentRole() == 'accountant'
@@ -45,6 +117,7 @@ service cloud.firestore {
     function canManageStock() {
       return isStaff() && (
         currentRole() == 'owner' ||
+        currentRole() == 'admin' ||
         currentRole() == 'manager' ||
         currentRole() == 'storekeeper'
       );
@@ -53,6 +126,7 @@ service cloud.firestore {
     function canViewFinancials() {
       return isStaff() && (
         currentRole() == 'owner' ||
+        currentRole() == 'admin' ||
         currentRole() == 'manager' ||
         currentRole() == 'accountant'
       );
@@ -61,6 +135,7 @@ service cloud.firestore {
     function isWebsiteManager() {
       return isStaff() && (
         currentRole() == 'owner' ||
+        currentRole() == 'admin' ||
         currentRole() == 'manager' ||
         currentRole() == 'website_manager'
       );
@@ -70,6 +145,469 @@ service cloud.firestore {
       return isStaff() && currentRole() == 'delivery_staff';
     }
 
+    // =========================================================================
+    // CollectionGroup Discovery for Staff Memberships (WorkspaceContext)
+    // =========================================================================
+    match /{path=**}/staff/{staffUid} {
+      allow read: if isAuthenticated() && (
+        resource.data.uid == request.auth.uid ||
+        staffUid == request.auth.uid
+      );
+    }
+
+    // =========================================================================
+    // Global User Profiles (/users/{uid})
+    // =========================================================================
+    match /users/{uid} {
+      allow read: if isUser(uid);
+      allow create: if isUser(uid) &&
+        request.resource.data.uid == uid &&
+        request.resource.data.status == 'active';
+      allow update: if isUser(uid) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.status == resource.data.status &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+      allow delete: if false;
+
+      match /notificationPreferences/{orgId} {
+        allow read: if isUser(uid);
+        allow write: if isUser(uid) &&
+          request.resource.data.uid == uid &&
+          request.resource.data.organizationId == orgId;
+      }
+    }
+
+    // =========================================================================
+    // Storefront Customer Accounts (/customers/{uid})
+    // =========================================================================
+    match /customers/{uid} {
+      allow read: if isUser(uid) || isStaff();
+      allow create: if isUser(uid) &&
+        request.resource.data.uid == uid &&
+        request.resource.data.status == 'active' &&
+        (
+          !('approvalStatus' in request.resource.data) ||
+          (request.resource.data.customerType == 'retail' && request.resource.data.approvalStatus == 'approved') ||
+          (request.resource.data.customerType != 'retail' && request.resource.data.approvalStatus == 'pending')
+        );
+      allow update: if isManagerOrOwner() || (
+        isUser(uid) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.status == resource.data.status &&
+        (!('approvalStatus' in resource.data) || request.resource.data.approvalStatus == resource.data.approvalStatus) &&
+        (!('accountRole' in resource.data) || request.resource.data.accountRole == resource.data.accountRole) &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+      );
+      allow delete: if isOwner();
+    }
+
+    // =========================================================================
+    // Multi-Tenant Showroom Organizations (/organizations/{orgId})
+    // =========================================================================
+    match /organizations/{orgId} {
+      allow read: if isOrgStaff(orgId);
+      allow create: if isOrgBootstrapOwner(orgId) &&
+        request.resource.data.id == orgId &&
+        request.resource.data.status in ['active', 'trial'] &&
+        !('ownerUid' in request.resource.data);
+      allow update: if isOrgAdminOrOwner(orgId) &&
+        request.resource.data.id == resource.data.id &&
+        !('ownerUid' in request.resource.data);
+      allow delete: if false;
+
+      // Showroom Branches / Stores
+      match /stores/{storeId} {
+        allow read: if isOrgStaff(orgId);
+        allow create: if (isOrgBootstrapOwner(orgId) || isOrgAdminOrOwner(orgId)) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.id == storeId;
+        allow update: if isOrgAdminOrOwner(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.id == resource.data.id;
+        allow delete: if isOrgOwner(orgId);
+      }
+
+      // Organization Staff Memberships (Single Source of Truth for RBAC)
+      match /staff/{staffUid} {
+        allow read: if isOrgStaff(orgId) || isUser(staffUid);
+        allow create: if request.resource.data.organizationId == orgId &&
+          request.resource.data.uid == staffUid && (
+            // 1. Atomic initial workspace bootstrap by owner
+            (isUser(staffUid) && !orgExists(orgId) && request.resource.data.roleId == 'owner') ||
+            // 2. Owner adds any staff member
+            isOrgOwner(orgId) ||
+            // 3. Admin adds lower-rank staff (< admin)
+            (isOrgStaff(orgId) && orgCallerRole(orgId) == 'admin' && roleRank(request.resource.data.roleId) < 5) ||
+            // 4. Invited user accepts a valid pending invitation matching their email
+            (
+              isUser(staffUid) &&
+              ('invitationId' in request.resource.data) &&
+              request.resource.data.invitationId is string &&
+              exists(/databases/$(database)/documents/organizations/$(orgId)/staffInvitations/$(request.resource.data.invitationId)) &&
+              get(/databases/$(database)/documents/organizations/$(orgId)/staffInvitations/$(request.resource.data.invitationId)).data.status == 'pending' &&
+              request.auth.token.email != null &&
+              get(/databases/$(database)/documents/organizations/$(orgId)/staffInvitations/$(request.resource.data.invitationId)).data.email == request.auth.token.email.lower() &&
+              request.resource.data.roleId == get(/databases/$(database)/documents/organizations/$(orgId)/staffInvitations/$(request.resource.data.invitationId)).data.roleId
+            )
+          );
+        allow update: if isOrgStaff(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.uid == resource.data.uid && (
+            (
+              staffUid == request.auth.uid &&
+              request.resource.data.roleId == resource.data.roleId &&
+              request.resource.data.status == resource.data.status &&
+              request.resource.data.allStoresAccess == resource.data.allStoresAccess &&
+              request.resource.data.storeIds == resource.data.storeIds &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'displayName', 'phone', 'phoneNumber', 'photoURL', 'updatedAt'
+              ])
+            ) ||
+            (
+              staffUid != request.auth.uid && (
+                isOrgOwner(orgId) ||
+                (
+                  orgCallerRole(orgId) == 'admin' &&
+                  roleRank(resource.data.roleId) < 5 &&
+                  roleRank(request.resource.data.roleId) < 5
+                )
+              )
+            )
+          );
+        allow delete: if isOrgStaff(orgId) && staffUid != request.auth.uid && (
+          isOrgOwner(orgId) ||
+          (orgCallerRole(orgId) == 'admin' && roleRank(resource.data.roleId) < 5)
+        );
+      }
+
+      // Custom Roles (System roles protected)
+      match /roles/{roleId} {
+        allow read: if isOrgStaff(orgId);
+        allow create: if isOrgOwner(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.isSystem != true;
+        allow update: if isOrgOwner(orgId) &&
+          resource.data.isSystem != true &&
+          request.resource.data.isSystem != true &&
+          request.resource.data.organizationId == orgId;
+        allow delete: if isOrgOwner(orgId) && resource.data.isSystem != true;
+      }
+
+      // Staff Invitations
+      match /staffInvitations/{invitationId} {
+        // Direct document get allowed so invitee can inspect their link before signing in; list restricted to org staff
+        allow get: if true;
+        allow list: if isOrgStaff(orgId);
+        allow create: if isOrgAdminOrOwner(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.id == invitationId &&
+          (isOrgOwner(orgId) || roleRank(request.resource.data.roleId) < 5);
+        allow update: if (
+          isOrgAdminOrOwner(orgId) &&
+          (isOrgOwner(orgId) || roleRank(resource.data.roleId) < 5)
+        ) || (
+          isAuthenticated() &&
+          resource.data.status == 'pending' &&
+          request.auth.token.email != null &&
+          resource.data.email == request.auth.token.email.lower() &&
+          request.resource.data.status == 'accepted' &&
+          request.resource.data.acceptedByUid == request.auth.uid
+        );
+        allow delete: if isOrgAdminOrOwner(orgId) &&
+          resource.data.status != 'accepted' &&
+          (isOrgOwner(orgId) || roleRank(resource.data.roleId) < 5);
+      }
+
+      // Immutable Audit Logs
+      match /auditLogs/{logId} {
+        allow read: if isOrgStaff(orgId);
+        allow create: if isOrgStaff(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.actorUid == request.auth.uid &&
+          request.resource.data.id == logId;
+        allow update, delete: if false;
+      }
+
+      // Notifications
+      match /notifications/{notificationId} {
+        allow read: if isOrgStaff(orgId) && (
+          resource.data.recipientUid == request.auth.uid ||
+          resource.data.recipientUid == 'all' ||
+          !('recipientUid' in resource.data)
+        );
+        allow create: if (isOrgStaff(orgId) || isOrgBootstrapOwner(orgId)) &&
+          request.resource.data.organizationId == orgId;
+        allow update: if isOrgStaff(orgId) && (
+          resource.data.recipientUid == request.auth.uid ||
+          resource.data.recipientUid == 'all' ||
+          isOrgAdminOrOwner(orgId)
+        );
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      // Media References
+      match /media/{mediaId} {
+        allow read: if isOrgStaff(orgId);
+        allow create: if isOrgStaff(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.ownerUid == request.auth.uid;
+        allow update: if isOrgStaff(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          (resource.data.ownerUid == request.auth.uid || isOrgAdminOrOwner(orgId));
+        allow delete: if isOrgStaff(orgId) &&
+          (resource.data.ownerUid == request.auth.uid || isOrgAdminOrOwner(orgId));
+      }
+
+      // Master Data & Catalogue
+      match /products/{productId} {
+        allow read: if isOrgStaff(orgId);
+        allow create: if isOrgStaff(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.id == productId;
+        allow update: if isOrgStaff(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.id == resource.data.id;
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /manufacturers/{manufacturerId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /units/{unitId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /warehouses/{warehouseId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /taxes/{taxId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgAdminOrOwner(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId) && resource.data.isSystem != true;
+      }
+
+      match /hsnCodes/{hsnId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId) && resource.data.isSystem != true;
+      }
+
+      match /hsn/{hsnId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId) && resource.data.isSystem != true;
+      }
+
+      // Store-Scoped Inventory Batches & Stock Transfers
+      match /batches/{batchId} {
+        allow read: if canAccessOrgStore(orgId, resource.data.storeId);
+        allow create: if canAccessOrgStore(orgId, request.resource.data.storeId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.id == batchId;
+        allow update: if canAccessOrgStore(orgId, resource.data.storeId) &&
+          canAccessOrgStore(orgId, request.resource.data.storeId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.id == resource.data.id;
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /stockTransfers/{transferId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      // POS Invoices (Immutable statutory documents)
+      match /invoices/{invoiceId} {
+        allow read: if canAccessOrgStore(orgId, resource.data.storeId);
+        allow create: if canAccessOrgStore(orgId, request.resource.data.storeId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.createdByUid == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Returns, Credit Notes & Quarantine
+      match /returns/{returnId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if false;
+      }
+
+      match /creditNotes/{creditNoteId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if false;
+      }
+
+      match /quarantineRecords/{recordId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      // ERP Customers, Khata Ledger & Payments
+      match /customers/{customerId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId);
+
+        match /ledger/{ledgerId} {
+          allow read: if isOrgStaff(orgId);
+          allow create: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+          allow update, delete: if false;
+        }
+      }
+
+      match /customerPayments/{paymentId} {
+        allow read: if isOrgStaff(orgId);
+        allow create: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow update, delete: if false;
+      }
+
+      // Suppliers, Purchase Orders, GRNs & Supplier Returns
+      match /suppliers/{supplierId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId);
+
+        match /ledger/{ledgerId} {
+          allow read: if isOrgStaff(orgId);
+          allow create: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+          allow update, delete: if false;
+        }
+      }
+
+      match /supplierReturns/{returnId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId) && request.resource.data.organizationId == orgId;
+        allow delete: if false;
+      }
+
+      match /purchaseOrders/{poId} {
+        allow read: if canAccessOrgStore(orgId, resource.data.storeId);
+        allow create: if canAccessOrgStore(orgId, request.resource.data.storeId) &&
+          request.resource.data.organizationId == orgId;
+        allow update: if canAccessOrgStore(orgId, resource.data.storeId) &&
+          canAccessOrgStore(orgId, request.resource.data.storeId) &&
+          request.resource.data.organizationId == orgId;
+        allow delete: if isOrgAdminOrOwner(orgId) && resource.data.status == 'draft';
+      }
+
+      match /grns/{grnId} {
+        allow read: if canAccessOrgStore(orgId, resource.data.storeId);
+        allow create: if canAccessOrgStore(orgId, request.resource.data.storeId) &&
+          request.resource.data.organizationId == orgId;
+        allow update: if canAccessOrgStore(orgId, resource.data.storeId) &&
+          request.resource.data.organizationId == orgId;
+        allow delete: if false;
+      }
+
+      // Tasks, Replenishment, Accounting & GST
+      match /tasks/{taskId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /accounts/{accountId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /journalEntries/{entryId} {
+        allow read: if isOrgStaff(orgId);
+        allow create: if isOrgStaff(orgId);
+        allow update, delete: if false;
+      }
+
+      match /gstLedgerEntries/{entryId} {
+        allow read: if isOrgStaff(orgId);
+        allow create: if isOrgStaff(orgId);
+        allow update, delete: if false;
+      }
+
+      match /gstFilingPeriods/{periodId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /eInvoiceRecords/{recordId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if false;
+      }
+
+      match /eInvoiceConfiguration/{configId} {
+        allow read: if isOrgStaff(orgId);
+        allow write: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /einvoices/{recordId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if false;
+      }
+
+      match /ewaybills/{recordId} {
+        allow read, create, update: if isOrgStaff(orgId);
+        allow delete: if false;
+      }
+
+      match /reorderRules/{ruleId} {
+        allow read, write: if isOrgStaff(orgId);
+      }
+
+      match /reorderRecommendations/{recId} {
+        allow read, write: if isOrgStaff(orgId);
+      }
+
+      match /replenishmentRuns/{runId} {
+        allow read, write: if isOrgStaff(orgId);
+      }
+
+      match /replenishmentSettings/{settingId} {
+        allow read, write: if isOrgStaff(orgId);
+      }
+
+      match /supplierPerformance/{perfId} {
+        allow read, write: if isOrgStaff(orgId);
+      }
+
+      // Storefront Online Orders, Customer Addresses & Delivery Partners
+      match /onlineOrders/{orderId} {
+        allow read: if isOrgStaff(orgId) || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+        allow create: if isOrgStaff(orgId) || (isAuthenticated() && request.resource.data.customerId == request.auth.uid);
+        allow update: if isOrgStaff(orgId) || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+
+      match /customerAddresses/{addressId} {
+        allow read: if isOrgStaff(orgId) || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+        allow create: if isOrgStaff(orgId) || (isAuthenticated() && request.resource.data.customerId == request.auth.uid);
+        allow update, delete: if isOrgStaff(orgId) || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      }
+
+      match /deliveryPartners/{partnerId} {
+        allow read: if isOrgStaff(orgId);
+        allow create, update: if isOrgStaff(orgId);
+        allow delete: if isOrgAdminOrOwner(orgId);
+      }
+    }
+
+    // =========================================================================
+    // Single-Tenant PRD v2 Collections (Preserved for Storefront / Seed Scripts)
+    // =========================================================================
     match /business/{docId} {
       allow read: if true;
       allow write: if isOwner();
@@ -81,15 +619,8 @@ service cloud.firestore {
     }
 
     match /staff/{uid} {
-      allow read: if isStaff();
+      allow read: if isStaff() || isUser(uid);
       allow write: if isOwner();
-    }
-
-    match /customers/{uid} {
-      allow read: if isStaff() || (isAuthenticated() && request.auth.uid == uid);
-      allow create: if isAuthenticated() && request.auth.uid == uid;
-      allow update: if (isAuthenticated() && request.auth.uid == uid) || isManagerOrOwner();
-      allow delete: if isOwner();
     }
 
     match /parties/{partyId} {

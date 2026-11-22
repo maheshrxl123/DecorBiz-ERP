@@ -1,6 +1,6 @@
 import { NotificationType } from '../types/firestore';
 
-export const APP_NAME = 'Vetrify';
+export const APP_NAME = 'DecorBiz';
 export const APP_TAGLINE = 'Billing, Inventory & E-commerce';
 export const DEFAULT_CURRENCY = 'INR';
 export const DEFAULT_TIMEZONE = 'Asia/Kolkata';

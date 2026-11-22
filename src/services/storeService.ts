@@ -10,6 +10,7 @@ import {
 import { getFirestoreDb } from '../lib/firebase/config';
 import { PharmacyStore } from '../types/firestore';
 import { validatePharmacyStore } from '../lib/firebase/validators';
+import { sanitizeFirestorePayload } from '../lib/firebase/queryUtils';
 
 export const storeService = {
   /**
@@ -95,20 +96,28 @@ export const storeService = {
     const storeId = `str_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const storeDocRef = doc(db, 'organizations', orgId, 'stores', storeId);
 
-    const storeData = {
+    const storeData = sanitizeFirestorePayload({
       id: storeId,
       organizationId: orgId,
       name: params.name.trim(),
       code: params.code.trim().toUpperCase(),
-      address: params.address,
-      phone: params.phone?.trim(),
-      email: params.email?.trim(),
-      gstin: params.gstin?.trim(),
+      address: params.address
+        ? {
+            street: params.address.street?.trim() || '',
+            city: params.address.city?.trim() || '',
+            state: params.address.state?.trim() || '',
+            postalCode: params.address.postalCode?.trim() || '',
+            country: params.address.country?.trim() || 'India',
+          }
+        : null,
+      phone: params.phone?.trim() || '',
+      email: params.email?.trim() || '',
+      gstin: params.gstin?.trim() || '',
       isMainBranch: params.isMainBranch ?? false,
       status: 'active' as const,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    };
+    });
 
     if (!validatePharmacyStore(storeData as any, orgId)) {
       throw new Error('Invalid pharmacy store payload parameters');
@@ -166,6 +175,10 @@ export const storeService = {
   ): Promise<void> {
     const db = getFirestoreDb();
     const storeDocRef = doc(db, 'organizations', orgId, 'stores', storeId);
+    const sanitizedPatch = sanitizeFirestorePayload({
+      ...params,
+      updatedAt: serverTimestamp(),
+    });
 
     // If marked as main branch, demote other branches
     if (params.isMainBranch) {
@@ -180,16 +193,10 @@ export const storeService = {
           });
         }
       }
-      batch.update(storeDocRef, {
-        ...params,
-        updatedAt: serverTimestamp(),
-      });
+      batch.update(storeDocRef, sanitizedPatch);
       await batch.commit();
     } else {
-      await updateDoc(storeDocRef, {
-        ...params,
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(storeDocRef, sanitizedPatch);
     }
 
     // Audit event logging

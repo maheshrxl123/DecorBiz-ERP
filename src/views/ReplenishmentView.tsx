@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useToast } from '../context/ToastContext';
 import { replenishmentService } from '../services/replenishmentService';
 import { ReorderRecommendation } from '../types/replenishment';
 import { Supplier } from '../types';
@@ -21,6 +22,7 @@ import {
 
 export const ReplenishmentView: React.FC = () => {
   const { organization, currentStore, firestoreUser, hasPermission } = useWorkspace();
+  const { success, error, warning } = useToast();
   const [recommendations, setRecommendations] = useState<ReorderRecommendation[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,7 +61,7 @@ export const ReplenishmentView: React.FC = () => {
       await loadData();
     } catch (err) {
       console.error('Analysis failed', err);
-      alert('Analysis failed to run.');
+      error('Replenishment analysis failed to run.', 'Analysis Failed');
     } finally {
       setIsRunning(false);
     }
@@ -81,7 +83,7 @@ export const ReplenishmentView: React.FC = () => {
     });
 
     if (bySupplier.size === 0) {
-      alert('Selected recommendations must have a preferred supplier.');
+      warning('Selected recommendations must have a preferred supplier.', 'Supplier Required');
       return;
     }
 
@@ -95,12 +97,12 @@ export const ReplenishmentView: React.FC = () => {
           { uid: firestoreUser.uid, email: firestoreUser.email, displayName: firestoreUser.displayName }
         );
       }
-      alert('Purchase Orders created successfully! Check Purchases module.');
+      success('Purchase Orders created successfully. Check the Purchases module.', 'Purchase Orders Created');
       setSelectedRecs(new Set());
       await loadData();
     } catch (err: any) {
       console.error('PO Creation failed', err);
-      alert('Failed to create POs: ' + err.message);
+      error(err?.message || 'Failed to create purchase orders.', 'PO Creation Failed');
     }
   };
 

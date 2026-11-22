@@ -17,6 +17,7 @@ import {
   ListTodo,
 } from 'lucide-react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useToast } from '../context/ToastContext';
 import { taskService } from '../services/taskService';
 import { Task, TaskStatus, TaskPriority, TaskType, NavModuleId } from '../types';
 
@@ -26,6 +27,7 @@ interface TasksWorkspaceViewProps {
 
 export const TasksWorkspaceView: React.FC<TasksWorkspaceViewProps> = ({ onNavigateToModule }) => {
   const { currentStore, organization, currentStaff } = useWorkspace();
+  const { error } = useToast();
   const orgId = organization?.id || '';
 
   // State Management
@@ -158,7 +160,7 @@ export const TasksWorkspaceView: React.FC<TasksWorkspaceViewProps> = ({ onNaviga
 
       loadTasks();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Transition failed');
+      error(err instanceof Error ? err.message : 'Status transition failed.', 'Update Failed');
     }
   };
 

@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer, type Firestore } from 'firebase/firestore';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 /**
  * Firebase Client Configuration
@@ -67,20 +67,3 @@ export function getFirestoreDb(): Firestore {
 }
 
 export const db = getFirestoreDb();
-
-async function testConnection(retryCount = 0) {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      if (retryCount < 2) {
-        setTimeout(() => testConnection(retryCount + 1), 1000);
-        return;
-      }
-      console.error('Please check your Firebase configuration.');
-    }
-  }
-}
-if (isFirebaseConfigured) {
-  testConnection();
-}

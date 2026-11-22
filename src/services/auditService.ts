@@ -127,14 +127,29 @@ export const auditService = {
   /**
    * Helper to strip passwords, secrets or payment info from data states
    */
-  sanitizeDataState(data: Record<string, any>): Record<string, any> {
+  sanitizeDataState(data: any): any {
+    if (data === null || data === undefined || typeof data !== 'object') {
+      return data;
+    }
+    if (
+      data instanceof Date ||
+      typeof data.toMillis === 'function' ||
+      typeof data.toDate === 'function' ||
+      data._methodName !== undefined ||
+      data.constructor?.name === 'FieldValue'
+    ) {
+      return data;
+    }
+    if (Array.isArray(data)) {
+      return data.map((item) => this.sanitizeDataState(item));
+    }
     const keysToStrip = ['password', 'secret', 'token', 'key', 'cvv', 'pin', 'card', 'credential'];
-    const sanitized = { ...data };
-    for (const key of Object.keys(sanitized)) {
-      if (keysToStrip.some(k => key.toLowerCase().includes(k))) {
+    const sanitized: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (keysToStrip.some((k) => key.toLowerCase().includes(k))) {
         sanitized[key] = '[REDACTED]';
-      } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
-        sanitized[key] = this.sanitizeDataState(sanitized[key]);
+      } else {
+        sanitized[key] = this.sanitizeDataState(value);
       }
     }
     return sanitized;

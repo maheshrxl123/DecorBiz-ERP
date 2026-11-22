@@ -23,6 +23,7 @@ import {
 import { Drawer } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { useConfirmation } from '../../context/ConfirmationContext';
 import { staffService } from '../../services/staffService';
 import { staffInvitationService } from '../../services/staffInvitationService';
 import { StaffMember, StaffInvitation } from '../../types/firestore';
@@ -51,6 +52,7 @@ export const StaffDetailsDrawer: React.FC<StaffDetailsDrawerProps> = ({
   onStaffStatusChanged,
 }) => {
   const { organization, stores, currentStaff } = useWorkspace();
+  const { confirm } = useConfirmation();
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -161,7 +163,13 @@ export const StaffDetailsDrawer: React.FC<StaffDetailsDrawerProps> = ({
   
   const handleDeleteInvite = async () => {
     if (!organization?.id || !invitation || !currentStaff) return;
-    if (!window.confirm(`Are you sure you want to permanently remove this invitation?`)) {
+    const confirmed = await confirm({
+      title: 'Remove Invitation',
+      description: 'Are you sure you want to permanently remove this invitation?',
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     setIsProcessing(true);
@@ -181,10 +189,15 @@ export const StaffDetailsDrawer: React.FC<StaffDetailsDrawerProps> = ({
     }
   };
 
-  const handleRevokeInvite
- = async () => {
+  const handleRevokeInvite = async () => {
     if (!organization?.id || !invitation || !currentStaff) return;
-    if (!window.confirm(`Are you sure you want to revoke the invitation for ${invitation.email}?`)) {
+    const confirmed = await confirm({
+      title: 'Revoke Invitation',
+      description: `Are you sure you want to revoke the invitation for ${invitation.email}?`,
+      confirmLabel: 'Revoke',
+      variant: 'warning',
+    });
+    if (!confirmed) {
       return;
     }
     setIsProcessing(true);
@@ -206,7 +219,13 @@ export const StaffDetailsDrawer: React.FC<StaffDetailsDrawerProps> = ({
 
   const handleSuspendStaff = async () => {
     if (!organization?.id || !staff || !currentStaff) return;
-    if (!window.confirm(`Are you sure you want to suspend access for ${staff.displayName}?`)) {
+    const confirmed = await confirm({
+      title: 'Suspend Staff Member',
+      description: `Are you sure you want to suspend access for ${staff.displayName}?`,
+      confirmLabel: 'Suspend Access',
+      variant: 'warning',
+    });
+    if (!confirmed) {
       return;
     }
     setIsProcessing(true);
@@ -237,7 +256,13 @@ export const StaffDetailsDrawer: React.FC<StaffDetailsDrawerProps> = ({
 
   const handleRemoveStaff = async () => {
     if (!organization?.id || !staff || !currentStaff) return;
-    if (!window.confirm(`Permanently remove staff membership for ${staff.displayName}? This action cannot be undone.`)) {
+    const confirmed = await confirm({
+      title: 'Remove Staff Member',
+      description: `Permanently remove staff membership for ${staff.displayName}? This action cannot be undone.`,
+      confirmLabel: 'Remove Permanently',
+      variant: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     setIsProcessing(true);

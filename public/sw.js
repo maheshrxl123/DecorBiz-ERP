@@ -1,11 +1,10 @@
 // DecorBiz Service Worker Shell for PWA & Offline Caching
-const CACHE_NAME = 'decorbiz-v2-cache';
+const CACHE_NAME = 'decorbiz-v3-cache';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.png',
-  '/config/theme.tokens.css'
 ];
 
 self.addEventListener('install', (event) => {
@@ -33,10 +32,18 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Allow network-first with offline fallback for navigation requests
-  if (event.request.mode === 'navigate') {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Never intercept non-GET requests, API routes, or cross-origin traffic (Firebase / ImageKit)
+  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // Network-first with offline fallback for navigation requests
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() =>
+      fetch(request).catch(() =>
         caches.match('/index.html').then((cached) => cached || new Response('Offline', { status: 503 }))
       )
     );
@@ -44,8 +51,8 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
+    caches.match(request).then((cachedResponse) => {
+      return cachedResponse || fetch(request);
     })
   );
 });

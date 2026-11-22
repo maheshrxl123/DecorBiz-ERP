@@ -176,10 +176,16 @@ export const staffService = {
     const db = getFirestoreDb();
     const staffDocRef = doc(db, 'organizations', orgId, 'staff', targetUid);
 
-    await updateDoc(staffDocRef, {
-      ...params,
+    const cleanPatch: Record<string, any> = {
       updatedAt: serverTimestamp(),
-    });
+    };
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        cleanPatch[key] = value;
+      }
+    }
+
+    await updateDoc(staffDocRef, cleanPatch);
 
     if (callerStaff) {
       if (params.roleId) {
@@ -216,11 +222,12 @@ export const staffService = {
    * Suspend a staff member
    */
   async suspendStaff(orgId: string, targetUid: string, callerStaff: StaffMember): Promise<void> {
-    if (!canSuspendStaff(callerStaff, { uid: targetUid, roleId: '' })) {
-      const target = await this.getStaffMember(orgId, targetUid);
-      if (!canSuspendStaff(callerStaff, target)) {
-        throw new Error('Unauthorized to suspend this staff member.');
-      }
+    const target = await this.getStaffMember(orgId, targetUid);
+    if (!target) {
+      throw new Error('Staff member not found.');
+    }
+    if (!canSuspendStaff(callerStaff, target)) {
+      throw new Error('Unauthorized to suspend this staff member.');
     }
 
     const db = getFirestoreDb();

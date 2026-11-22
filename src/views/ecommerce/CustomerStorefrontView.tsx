@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { useToast } from '../../context/ToastContext';
 import { productService } from '../../services/productService';
 import { ecommerceService } from '../../services/ecommerceService';
 import { PharmacyProduct } from '../../types/firestore';
@@ -12,6 +13,7 @@ import {
 
 export const CustomerStorefrontView: React.FC = () => {
   const { organization, currentStore, firestoreUser, currentStaff } = useWorkspace();
+  const { success, error, warning } = useToast();
   const [products, setProducts] = useState<PharmacyProduct[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -101,9 +103,9 @@ export const CustomerStorefrontView: React.FC = () => {
       const addrs = await ecommerceService.getCustomerAddresses(orgId, customerId);
       setAddresses(addrs);
       if (addrs.length > 0) setSelectedAddressId(addrs[addrs.length - 1].id);
-      alert('Address saved successfully!');
+      success('Site delivery address saved successfully.', 'Address Saved');
     } catch (err: any) {
-      alert('Failed to save address: ' + err.message);
+      error(err?.message || 'Failed to save address.', 'Save Failed');
     }
   };
 
@@ -115,7 +117,7 @@ export const CustomerStorefrontView: React.FC = () => {
       const planUrl = URL.createObjectURL(file);
       setUploadedPlanFiles(prev => [...prev, { name: file.name, url: planUrl }]);
     } catch (err: any) {
-      alert('File selection failed: ' + err.message);
+      error(err?.message || 'File selection failed.', 'Upload Failed');
     } finally {
       setUploadingPlan(false);
     }
@@ -125,7 +127,7 @@ export const CustomerStorefrontView: React.FC = () => {
     if (!orgId || cart.length === 0) return;
     const address = addresses.find(a => a.id === selectedAddressId);
     if (fulfilmentType === 'delivery' && !address) {
-      alert('Please select or add a delivery address for site dispatch.');
+      warning('Please select or add a delivery address for site dispatch.', 'Address Required');
       return;
     }
 
@@ -176,9 +178,9 @@ export const CustomerStorefrontView: React.FC = () => {
       setIsCartOpen(false);
       setActiveTab('orders');
       loadData();
-      alert('Order placed successfully! The showroom team will review stock and prepare dispatch.');
+      success('Order placed successfully. The showroom team will review stock and prepare dispatch.', 'Order Placed');
     } catch (err: any) {
-      alert('Order placement failed: ' + err.message);
+      error(err?.message || 'Order placement failed.', 'Checkout Failed');
     }
   };
 
@@ -212,9 +214,9 @@ export const CustomerStorefrontView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="w-3 h-3 rounded-full bg-[#00C9A7] animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider text-[#00E5FF]">Vetrify Verified Showroom</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#00E5FF]">DecorBiz Verified Showroom</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold">{currentStore?.name || organization?.name || 'Vetrify Tiles & Architectural Store'}</h1>
+          <h1 className="text-2xl md:text-3xl font-extrabold">{currentStore?.name || organization?.name || 'DecorBiz Tiles & Architectural Store'}</h1>
           <p className="text-sm text-slate-200 mt-1">
             Vitrified Tiles, Slabs, Sanitaryware, Faucets & Tile Adhesives &bull; Direct Godown Inwards & On-Site Delivery
           </p>
@@ -388,7 +390,7 @@ export const CustomerStorefrontView: React.FC = () => {
                     <div key={item.product.id} className="flex justify-between items-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                       <div className="flex-1 mr-3">
                         <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">{item.product.productName}</h4>
-                        <p className="text-[10px] text-slate-400">{item.product.brand || 'Vetrify'} &bull; ₹{item.product.sellingPrice || item.product.mrp || 100} / unit</p>
+                        <p className="text-[10px] text-slate-400">{item.product.brand || 'DecorBiz'} &bull; ₹{item.product.sellingPrice || item.product.mrp || 100} / unit</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => handleUpdateCartQty(item.product.id, -1)} className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">-</button>

@@ -32,20 +32,19 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     window.print();
   };
 
-  const handleWhatsAppShare = () => {
-    const text = encodeURIComponent(`*Tax Invoice ${invoice.invoiceNumber}*\nFrom: ${orgName}\nAmount: ₹${invoice.grandTotal.toFixed(2)}\nItems: ${invoice.items.length}\nThank you for choosing ${APP_CONFIG.placeholderBusiness.tradeName}!`);
-    window.open(`https://wa.me/?text=${text}`, '_blank');
-  };
-
   const invoiceDateStr = formatDateTime(invoice.createdAt) || new Date().toLocaleString('en-IN');
 
   const orgName = organization?.legalName || organization?.name || APP_CONFIG.placeholderBusiness.legalName;
   const orgGstin = store?.gstin || organization?.gstin || APP_CONFIG.placeholderBusiness.gstin;
-  const storeName = store?.name || APP_CONFIG.placeholderBusiness.tradeName;
+  const storeName = store?.name || orgName;
   const storePhone = store?.phone || APP_CONFIG.placeholderBusiness.phone;
   const storeAddress = store?.address
     ? `${store.address.street || ''}, ${store.address.city || ''}, ${store.address.state || ''} - ${store.address.postalCode || ''}`
     : APP_CONFIG.placeholderBusiness.address;
+
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(
+    `*Tax Invoice ${invoice.invoiceNumber}*\nFrom: ${orgName}\nAmount: ₹${safeToFixed(invoice.grandTotal)}\nItems: ${invoice.items.length}\nThank you for choosing ${storeName}!`
+  )}`;
 
   const totalBoxes = invoice.items.reduce((sum, item) => sum + item.quantity, 0);
   const totalWeightKg = invoice.items.reduce((sum, item) => sum + (item.quantity * 28), 0);
@@ -140,15 +139,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleWhatsAppShare}
+            <a
+              href={whatsappShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
               title="Share on WhatsApp"
             >
               <Share2 className="w-4 h-4" />
               <span className="hidden sm:inline">WhatsApp</span>
-            </button>
+            </a>
 
             <button
               id="btn-trigger-print"
@@ -301,7 +301,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 <p>1. Check Shade &amp; Lot before fixing. No claim accepted after tiles are laid.</p>
                 <p>2. Breakage allowance: 2% standard transport toleration.</p>
                 <p>3. Goods once delivered cannot be returned or exchanged.</p>
-                <p className="pt-1 font-mono text-[7px] text-slate-400">Powered by Vetrify Ceramic ERP</p>
+                <p className="pt-1 font-mono text-[7px] text-slate-400">Powered by DecorBiz Showroom ERP</p>
               </div>
             </div>
           )}

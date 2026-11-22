@@ -8,8 +8,8 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
-  signIn: (credentials: SignInCredentials) => Promise<void>;
-  signUp: (credentials: SignUpCredentials) => Promise<void>;
+  signIn: (credentials: SignInCredentials) => Promise<AuthUser>;
+  signUp: (credentials: SignUpCredentials) => Promise<AuthUser>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   clearError: () => void;
@@ -36,12 +36,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  const signIn = async (credentials: SignInCredentials) => {
+  const signIn = async (credentials: SignInCredentials): Promise<AuthUser> => {
     setError(null);
     try {
       const authUser = await authService.signIn(credentials);
       setUser(authUser);
       setStatus('authenticated');
+      return authUser;
     } catch (err: any) {
       const message = err instanceof Error ? err.message : 'Authentication failed';
       setError(message);
@@ -49,12 +50,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signUp = async (credentials: SignUpCredentials) => {
+  const signUp = async (credentials: SignUpCredentials): Promise<AuthUser> => {
     setError(null);
     try {
       const authUser = await authService.signUp(credentials);
       setUser(authUser);
       setStatus('authenticated');
+      return authUser;
     } catch (err: any) {
       const message = err instanceof Error ? err.message : 'Registration failed';
       setError(message);

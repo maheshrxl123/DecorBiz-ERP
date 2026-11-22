@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useAuth } from '../../auth/AuthProvider';
+import { useToast } from '../../context/ToastContext';
 import {
   SalesReturn,
   CreditNote,
@@ -33,6 +34,7 @@ import { t } from '../../i18n';
 export function ReturnsWorkspace() {
   const { organization: currentOrganization, currentStore } = useWorkspace();
   const { user } = useAuth();
+  const { success, error } = useToast();
 
   const [activeTab, setActiveTab] = useState<'sales_returns' | 'credit_notes' | 'supplier_returns'>('sales_returns');
 
@@ -83,8 +85,9 @@ export function ReturnsWorkspace() {
         returnId
       );
       refreshData();
+      success('Sales return approved successfully.', 'Return Approved');
     } catch (err: any) {
-      alert(err.message || 'Failed to approve sales return');
+      error(err?.message || 'Failed to approve sales return.', 'Approval Failed');
     }
   };
 

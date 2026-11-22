@@ -32,6 +32,7 @@ import { setProductStatus, deleteProduct } from '../services/productService';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../auth/AuthProvider';
 import { useToast } from '../context/ToastContext';
+import { useConfirmation } from '../context/ConfirmationContext';
 import { safeToFixed, formatDate } from '../lib/formatting/formatters';
 
 interface ProductDetailDrawerProps {
@@ -52,6 +53,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
   const { organization } = useWorkspace();
   const { user } = useAuth();
   const { success, error } = useToast();
+  const { confirm } = useConfirmation();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'batches' | 'pricing' | 'history'>('overview');
   const [isArchiving, setIsArchiving] = useState(false);
@@ -102,7 +104,13 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
       error('Missing organization, user, or product ID.', 'Deletion Failed');
       return;
     }
-    if (!window.confirm(`Are you sure you want to permanently delete "${productName}"? This action cannot be undone.`)) {
+    const confirmed = await confirm({
+      title: 'Delete Product',
+      description: `Are you sure you want to permanently delete "${productName}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Permanently',
+      variant: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     try {

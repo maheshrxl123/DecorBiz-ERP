@@ -36,6 +36,7 @@ import { notificationService } from './services/notificationService';
 import { StoreSelectorModal } from './components/common/StoreSelectorModal';
 import { UserProfileModal } from './components/common/UserProfileModal';
 import { CommandPaletteHelpModal } from './components/common/CommandPaletteHelpModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthLoadingScreen } from './components/auth/AuthLoadingScreen';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Drawer } from './components/ui/Modal';
@@ -234,6 +235,57 @@ function AuthenticatedAppShell() {
         }}
       />
 
+      {/* Mobile Navigation Drawer */}
+      <Drawer
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        title={activeStoreContext.name}
+        subtitle="Showroom ERP Navigation"
+        width="md"
+      >
+        <nav className="space-y-1">
+          {(
+            [
+              { id: 'dashboard', label: 'Dashboard' },
+              { id: 'pos', label: 'Billing (POS)', allowed: hasPermission('pos.create') },
+              { id: 'quotations', label: 'Quotations', allowed: hasPermission('pos.create') },
+              { id: 'inventory', label: 'Items & Stock', allowed: hasPermission('inventory.read') },
+              { id: 'warehouses', label: 'Warehouses & Yards', allowed: hasPermission('inventory.read') },
+              { id: 'transfers', label: 'Branch Transfers', allowed: hasPermission('inventory.read') },
+              { id: 'customers', label: 'Parties & Khata', allowed: hasPermission('customer.read') },
+              { id: 'collections', label: 'Payments & Collections', allowed: hasPermission('pos.create') },
+              { id: 'purchases', label: 'Purchases & Suppliers', allowed: hasPermission('purchases.read') },
+              { id: 'replenishment', label: 'Replenishment', allowed: hasPermission('purchases.read') },
+              { id: 'sales_returns', label: 'Returns & Credit Notes', allowed: hasPermission('pos.create') },
+              { id: 'ecommerce', label: 'Online Orders & Storefront', allowed: hasPermission('inventory.read') },
+              { id: 'tasks', label: 'Tasks & Follow-ups' },
+              { id: 'reports', label: 'Reports & Analytics', allowed: hasPermission('reports.read') },
+              { id: 'gst_accounts', label: 'GST & E-Invoicing', allowed: hasPermission('reports.read') },
+              { id: 'audit_centre', label: 'Audit Centre', allowed: hasPermission('reports.read') },
+              { id: 'settings', label: 'Settings', allowed: hasPermission('settings.read') || hasPermission('settings.update') },
+            ] as { id: NavModuleId; label: string; allowed?: boolean }[]
+          )
+            .filter((item) => item.allowed !== false)
+            .map((item) => {
+              const isActive = activeModule === item.id || (item.id === 'pos' && activeModule === 'billing');
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleSelectModule(item.id)}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-[#1F4D3A] text-white'
+                      : 'text-[#57534E] hover:bg-[#F6F3EE] hover:text-[#1C1917]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+        </nav>
+      </Drawer>
+
       {/* Modals & Dialogs */}
       <GlobalSearch
         isOpen={isSearchOpen}
@@ -267,8 +319,6 @@ function AuthenticatedAppShell() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
       />
-
-      <ToastContainer />
     </div>
   );
 }
@@ -284,6 +334,14 @@ function RouterApp() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // SPA redirect when already authenticated on /erp/login (avoiding side effects during render)
+  useEffect(() => {
+    if (currentPath === '/erp/login' && isAuthenticated) {
+      window.history.replaceState({}, '', '/erp');
+      setCurrentPath('/erp');
+    }
+  }, [currentPath, isAuthenticated]);
 
   const searchParams = new URLSearchParams(window.location.search);
   const hasInviteParams = Boolean(
@@ -322,13 +380,12 @@ function RouterApp() {
   // 4. Staff Login (/erp/login)
   if (currentPath === '/erp/login') {
     if (isAuthenticated) {
-      window.location.href = '/erp';
       return <AuthLoadingScreen message="Redirecting to showroom dashboard..." />;
     }
     return <StaffLoginView />;
   }
 
-  // 4. Staff ERP Routes (/erp and /erp/*)
+  // 5. Staff ERP Routes (/erp and /erp/*)
   if (currentPath.startsWith('/erp')) {
     if (status === 'loading') {
       return <AuthLoadingScreen message="Loading DecorBiz showroom..." />;
@@ -344,18 +401,21 @@ function RouterApp() {
     );
   }
 
-  // 5. Unknown Route -> Storefront 404
+  // 6. Unknown Route -> Storefront 404
   return <Storefront404 />;
 }
 
 export default function App() {
   return (
-    <ToastProvider>
-      <ConfirmationProvider>
-        <AuthProvider>
-          <RouterApp />
-        </AuthProvider>
-      </ConfirmationProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <ConfirmationProvider>
+          <AuthProvider>
+            <RouterApp />
+            <ToastContainer />
+          </AuthProvider>
+        </ConfirmationProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
